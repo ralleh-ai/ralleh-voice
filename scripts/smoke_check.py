@@ -179,11 +179,13 @@ async def check_ws_turn(ws_url: str, timeout: float, auth_token: str | None, req
                 if event_type == "session.done":
                     break
 
-            expected = ["stt.final", "agent.reply", "audio.output.chunk", "session.done"]
-            if received_types[:4] != expected:
-                return fail(f"unexpected turn sequence: {received_types}")
-
-            return ok("websocket turn succeeded with deterministic output sequence")
+            expected_buffered = ["stt.final", "agent.reply", "audio.output.chunk", "session.done"]
+            expected_streaming = ["stt.partial", "stt.final", "agent.reply", "audio.output.chunk", "session.done"]
+            if received_types[:4] == expected_buffered:
+                return ok("websocket turn succeeded with buffered deterministic output sequence")
+            if received_types[:5] == expected_streaming:
+                return ok("websocket turn succeeded with streaming deterministic output sequence")
+            return fail(f"unexpected turn sequence: {received_types}")
     except Exception as exc:  # pragma: no cover - network/runtime dependent
         return fail(f"websocket smoke check failed: {exc}")
 
