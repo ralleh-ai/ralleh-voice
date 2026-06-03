@@ -1,4 +1,27 @@
+## [Unreleased]
+
+### Added
+- WebSocket inbound guardrails: max event size, max decoded audio chunk size, and max buffered-turn chunk/byte limits with structured errors (`EVENT_TOO_LARGE`, `AUDIO_CHUNK_TOO_LARGE`, `TURN_BUFFER_OVERFLOW`).
+- OpenClaw bridge prompt size guardrail (`RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS`) with `INPUT_TOO_LARGE` error mapping.
+
+### Changed
+- `session.cancel` without active/buffered work no longer emits redundant `session.done` events.
+- Generic pipeline exception reporting now returns `Internal pipeline failure` instead of raw exception strings.
+
 # Changelog
+
+## [0.2.3] - 2026-06-03
+
+### Added
+- WebSocket ingress safety limits (configurable max event bytes, max decoded chunk bytes, max turn bytes, max turn chunks).
+- Tests for oversized event/chunk/turn inputs and pipeline-failure redaction behavior.
+
+### Changed
+- Generic `PIPELINE_FAILURE` websocket error detail now avoids leaking internal exception messages.
+- Settings loader now validates websocket limit invariants (e.g. chunk limit cannot exceed turn limit).
+
+### Notes
+- This release hardens abuse handling without changing the deterministic default adapter posture.
 
 ## [0.2.2] - 2026-06-03
 

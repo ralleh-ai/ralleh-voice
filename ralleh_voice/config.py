@@ -24,6 +24,14 @@ def _env_choice(name: str, default: str, allowed: set[str]) -> str:
     return value
 
 
+def _env_int_min(name: str, default: int, minimum: int) -> int:
+    raw = os.getenv(name)
+    value = default if raw is None else int(raw)
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}, got: {value}")
+    return value
+
+
 @dataclass(slots=True)
 class Settings:
     env: str = "dev"
@@ -32,6 +40,10 @@ class Settings:
     log_level: str = "info"
     ws_path: str = "/v1/ws/voice"
     static_enabled: bool = True
+    ws_max_event_bytes: int = 262144
+    ws_max_audio_chunk_bytes: int = 262144
+    ws_max_buffered_chunks: int = 512
+    ws_max_buffered_audio_bytes: int = 8388608
     openclaw_gateway_url: str = "http://127.0.0.1:18789"
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
     openclaw_gateway_token_env_var: str = "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN"
@@ -39,6 +51,7 @@ class Settings:
     openclaw_agent_target: str = "openclaw/default"
     openclaw_session_key_prefix: str = "ralleh-voice"
     openclaw_gateway_timeout_ms: int = 10000
+    openclaw_bridge_prompt_max_chars: int = 12000
     kokoro_voice: str = "af_bella"
     audio_sample_rate: int = 16000
     adapter_vad: str = "deterministic"
@@ -58,14 +71,28 @@ class Settings:
     kokoro_output_format: str = "pcm_s16le"
 
 
+def _validate_settings(cfg: Settings) -> Settings:
+    if cfg.ws_max_audio_chunk_bytes > cfg.ws_max_buffered_audio_bytes:
+        raise ValueError(
+            "RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES must be <= RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES"
+        )
+    return cfg
+
+
 def load_settings() -> Settings:
-    return Settings(
+    cfg = Settings(
         env=os.getenv("RALLEH_VOICE_ENV", "dev"),
         host=os.getenv("RALLEH_VOICE_HOST", "127.0.0.1"),
         port=int(os.getenv("RALLEH_VOICE_PORT", "8099")),
         log_level=os.getenv("RALLEH_VOICE_LOG_LEVEL", "info"),
         ws_path=os.getenv("RALLEH_VOICE_WS_PATH", "/v1/ws/voice"),
         static_enabled=_env_bool("RALLEH_VOICE_STATIC_ENABLED", True),
+        ws_max_event_bytes=_env_int_min("RALLEH_VOICE_WS_MAX_EVENT_BYTES", 262144, 1),
+        ws_max_audio_chunk_bytes=_env_int_min("RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES", 262144, 1),
+        ws_max_buffered_chunks=_env_int_min("RALLEH_VOICE_WS_MAX_BUFFERED_CHUNKS", 512, 1),
+        ws_max_buffered_audio_bytes=_env_int_min(
+            "RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES", 8388608, 1024
+        ),
         openclaw_gateway_url=os.getenv(
             "RALLEH_VOICE_OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789"
         ),
@@ -83,8 +110,11 @@ def load_settings() -> Settings:
         openclaw_session_key_prefix=os.getenv(
             "RALLEH_VOICE_OPENCLAW_SESSION_KEY_PREFIX", "ralleh-voice"
         ),
-        openclaw_gateway_timeout_ms=int(
-            os.getenv("RALLEH_VOICE_OPENCLAW_GATEWAY_TIMEOUT_MS", "10000")
+        openclaw_gateway_timeout_ms=_env_int_min(
+            "RALLEH_VOICE_OPENCLAW_GATEWAY_TIMEOUT_MS", 10000, 1
+        ),
+        openclaw_bridge_prompt_max_chars=_env_int_min(
+            "RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS", 12000, 1
         ),
         kokoro_voice=os.getenv("RALLEH_VOICE_KOKORO_VOICE", "af_bella"),
         audio_sample_rate=int(os.getenv("RALLEH_VOICE_AUDIO_SAMPLE_RATE", "16000")),
@@ -110,3 +140,4 @@ def load_settings() -> Settings:
         kokoro_sample_rate=int(os.getenv("RALLEH_VOICE_KOKORO_SAMPLE_RATE", "24000")),
         kokoro_output_format=os.getenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "pcm_s16le"),
     )
+    return _validate_settings(cfg)

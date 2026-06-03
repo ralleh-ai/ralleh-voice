@@ -27,10 +27,15 @@ Recommended production posture:
 - malformed JSON => `session.error` (`BAD_JSON`)
 - invalid event envelope => `session.error` (`BAD_EVENT`)
 - unsupported inbound type => `session.error` (`UNSUPPORTED_EVENT`)
+- oversized websocket event => `session.error` (`EVENT_TOO_LARGE`)
 - invalid/empty audio chunk => `session.error` (`BAD_AUDIO_CHUNK`)
+- oversized decoded audio chunk => `session.error` (`AUDIO_CHUNK_TOO_LARGE`)
+- per-turn chunk/byte limit exceeded => `session.error` (`TURN_BUFFER_OVERFLOW`) and turn buffer reset
 - end-turn without chunks => `session.error` (`EMPTY_TURN`)
 - adapter failure (missing dep/model/endpoint/auth/network/timeout/contract mismatch) => `session.error` (`ADAPTER_FAILURE`) with structured `meta`
-- cancel => `session.done` with `reason=cancelled`
+- unexpected internal exception => `session.error` (`PIPELINE_FAILURE`) with generic detail
+- cancel while a turn is active => `session.done` with `reason=cancelled`
+- cancel with buffered-but-not-started audio => `session.done` with `reason=cancelled`
 
 ## Practical SLO starter targets
 

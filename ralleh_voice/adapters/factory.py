@@ -96,6 +96,7 @@ def _build_bridge(cfg: Settings) -> OpenClawBridge:
             agent_target=cfg.openclaw_agent_target,
             session_key_prefix=cfg.openclaw_session_key_prefix,
             timeout_ms=cfg.openclaw_gateway_timeout_ms,
+            prompt_max_chars=cfg.openclaw_bridge_prompt_max_chars,
         )
     raise ValueError(f"Unsupported bridge adapter: {cfg.adapter_bridge}")
 

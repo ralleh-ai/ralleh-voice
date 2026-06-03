@@ -20,12 +20,14 @@ When reporting, include:
 - service binds loopback by default
 - no secrets should be committed to git
 - malformed WebSocket events are handled with structured errors
+- websocket ingress has bounded event/chunk/turn limits to reduce abuse blast radius
 - adapter failures are surfaced as structured errors without exposing token values
+- unexpected internal pipeline exceptions are redacted to generic failure detail
 
 ## Current limitations (known)
 
 - no authentication/authorization on WS path yet
-- no production-grade rate limiting yet
+- no production-grade identity-aware rate limiting yet
 - deterministic placeholder adapters by default
 - openclaw-gateway bridge mode uses pinned `POST /v1/chat/completions` gateway contract
 - bridge token values are runtime-only and must not appear in logs, tests, or error payloads

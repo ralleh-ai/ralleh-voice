@@ -30,6 +30,7 @@ def _bridge(**kwargs) -> OpenClawGatewayBridge:
         agent_target=kwargs.get("agent_target", "openclaw/default"),
         session_key_prefix=kwargs.get("session_key_prefix", "ralleh-voice"),
         timeout_ms=kwargs.get("timeout_ms", 2500),
+        prompt_max_chars=kwargs.get("prompt_max_chars", 12000),
     )
 
 
@@ -156,3 +157,17 @@ def test_openclaw_bridge_contract_mismatch(monkeypatch):
 
     payload = exc.value.to_payload()
     assert payload["code"] == "CONTRACT_MISMATCH"
+
+
+def test_openclaw_bridge_prompt_too_large(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN", "token")
+    bridge = _bridge(prompt_max_chars=5)
+
+    import asyncio
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(bridge.ask("this is too large", session_id="sess-2"))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "INPUT_TOO_LARGE"
+    assert payload["meta"]["limit"] == 5

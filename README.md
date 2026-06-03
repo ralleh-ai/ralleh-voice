@@ -10,6 +10,8 @@ Browser-first voice gateway MVP for the Ralleh stack.
 - Inbound event handling for `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
 - Outbound events for `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
 - Structured malformed JSON / bad event errors (no process crash)
+- Input guardrails for inbound event size, per-chunk size, and total buffered-audio limits
+- WS/event abuse guardrails: event-size, chunk-size, per-turn bytes, and per-turn chunk count limits
 - Turn cancellation foundation with per-turn cancellation state
 - Adapter factory + explicit modules for VAD/STT/bridge/TTS
 - Deterministic adapters remain default so tests run without model downloads
@@ -77,6 +79,11 @@ Adapter mode selection (deterministic defaults are CI-safe):
 - `RALLEH_VOICE_OPENCLAW_GATEWAY_ALLOW_UNAUTHENTICATED=false` (set true only for trusted private ingress)
 - `RALLEH_VOICE_OPENCLAW_SESSION_KEY_PREFIX=ralleh-voice`
 - `RALLEH_VOICE_OPENCLAW_GATEWAY_TIMEOUT_MS=10000`
+- `RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS=12000`
+- `RALLEH_VOICE_WS_MAX_EVENT_BYTES=262144`
+- `RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES=262144`
+- `RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES=8388608`
+- `RALLEH_VOICE_WS_MAX_BUFFERED_CHUNKS=512`
 
 Optional heavy dependencies:
 
@@ -101,6 +108,7 @@ Current real-adapter status:
   - token values are never included in error payloads/log hints
 
 When a selected adapter fails at runtime, WS returns `session.error` with code `ADAPTER_FAILURE` and structured metadata.
+Unexpected internal pipeline exceptions are surfaced as a generic `PIPELINE_FAILURE` message without leaking internal exception text.
 
 ## Deployment posture
 

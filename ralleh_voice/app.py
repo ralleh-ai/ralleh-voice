@@ -41,6 +41,7 @@ class SessionState:
     current_turn: TurnState | None = None
     turn_task: asyncio.Task[None] | None = None
     incoming_chunks: list[bytes] = field(default_factory=list)
+    incoming_bytes: int = 0
 
     def next(self) -> int:
         seq = self.next_seq
@@ -53,7 +54,7 @@ def health_payload() -> dict[str, Any]:
     return {
         "service": "ralleh-voice",
         "status": "ok",
-        "version": "0.2.2",
+        "version": "0.2.3",
         "env": cfg.env,
         "components": {
             "vad": cfg.adapter_vad,
@@ -131,7 +132,7 @@ def _build_pipeline(cfg: Settings) -> VoicePipeline:
 
 def create_app():
     cfg = load_settings()
-    app = FastAPI(title="ralleh-voice", version="0.2.2")
+    app = FastAPI(title="ralleh-voice", version="0.2.3")
 
     if cfg.static_enabled:
         app.mount("/static", StaticFiles(directory="static", html=True), name="static")
@@ -164,6 +165,12 @@ def create_app():
         async def send_error(code: str, detail: str, *, meta: dict[str, Any] | None = None) -> None:
             await send_event(EVENT_ERROR, structured_error(code=code, detail=detail, meta=meta))
 
+        async def finish_turn(*, turn_id: int | None, reason: str) -> None:
+            payload: dict[str, Any] = {"reason": reason}
+            if turn_id is not None:
+                payload["turn_id"] = turn_id
+            await send_event(EVENT_DONE, payload)
+
         async def run_buffered_turn(chunks: list[bytes]) -> None:
             if not chunks:
                 await send_error("EMPTY_TURN", "No audio chunks were buffered for this turn")
@@ -191,16 +198,16 @@ def create_app():
                             "chunk": out.decode("utf-8", errors="ignore"),
                         },
                     )
-                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "turn-complete"})
+                await finish_turn(turn_id=turn.turn_id, reason="turn-complete")
             except PipelineCancelled:
-                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "cancelled"})
+                await finish_turn(turn_id=turn.turn_id, reason="cancelled")
             except PipelineAdapterFailure as exc:
                 payload = exc.error.to_payload()
                 await send_error("ADAPTER_FAILURE", payload["detail"], meta=payload)
-                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "error"})
-            except Exception as exc:
-                await send_error("PIPELINE_FAILURE", str(exc))
-                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "error"})
+                await finish_turn(turn_id=turn.turn_id, reason="error")
+            except Exception:
+                await send_error("PIPELINE_FAILURE", "Internal pipeline failure")
+                await finish_turn(turn_id=turn.turn_id, reason="error")
             finally:
                 session.current_turn = None
                 session.turn_task = None
@@ -210,6 +217,14 @@ def create_app():
         try:
             while True:
                 raw = await ws.receive_text()
+
+                if len(raw.encode("utf-8")) > cfg.ws_max_event_bytes:
+                    await send_error(
+                        "EVENT_TOO_LARGE",
+                        "Inbound event exceeded configured max size",
+                        meta={"limit_bytes": cfg.ws_max_event_bytes},
+                    )
+                    continue
 
                 try:
                     parsed = parse_client_event(raw)
@@ -232,8 +247,11 @@ def create_app():
                         session.current_turn.cancelled = True
                         continue
 
+                    had_buffered_audio = bool(session.incoming_chunks)
                     session.incoming_chunks.clear()
-                    await send_event(EVENT_DONE, {"reason": "cancelled"})
+                    session.incoming_bytes = 0
+                    if had_buffered_audio:
+                        await finish_turn(turn_id=None, reason="cancelled")
                     continue
 
                 if parsed.event_type == EVENT_AUDIO_IN:
@@ -251,7 +269,39 @@ def create_app():
                         await send_error("BAD_AUDIO_CHUNK", "decoded audio chunk was empty")
                         continue
 
+                    if len(chunk) > cfg.ws_max_audio_chunk_bytes:
+                        await send_error(
+                            "AUDIO_CHUNK_TOO_LARGE",
+                            "Decoded audio chunk exceeded configured max size",
+                            meta={"limit_bytes": cfg.ws_max_audio_chunk_bytes},
+                        )
+                        continue
+
+                    if len(session.incoming_chunks) >= cfg.ws_max_buffered_chunks:
+                        session.incoming_chunks.clear()
+                        session.incoming_bytes = 0
+                        await send_error(
+                            "TURN_BUFFER_OVERFLOW",
+                            "Too many audio chunks buffered for pending turn",
+                            meta={"limit_chunks": cfg.ws_max_buffered_chunks},
+                        )
+                        await finish_turn(turn_id=None, reason="error")
+                        continue
+
+                    next_total = session.incoming_bytes + len(chunk)
+                    if next_total > cfg.ws_max_buffered_audio_bytes:
+                        session.incoming_chunks.clear()
+                        session.incoming_bytes = 0
+                        await send_error(
+                            "TURN_BUFFER_OVERFLOW",
+                            "Buffered audio exceeded configured max size",
+                            meta={"limit_bytes": cfg.ws_max_buffered_audio_bytes},
+                        )
+                        await finish_turn(turn_id=None, reason="error")
+                        continue
+
                     session.incoming_chunks.append(chunk)
+                    session.incoming_bytes = next_total
                     continue
 
                 if parsed.event_type == EVENT_AUDIO_END:
@@ -261,12 +311,15 @@ def create_app():
 
                     chunks = list(session.incoming_chunks)
                     session.incoming_chunks.clear()
+                    session.incoming_bytes = 0
                     session.turn_task = asyncio.create_task(run_buffered_turn(chunks))
                     continue
 
         except WebSocketDisconnect:
             if session.current_turn is not None:
                 session.current_turn.cancelled = True
+            if session.turn_task is not None:
+                session.turn_task.cancel()
             return
 
     return app

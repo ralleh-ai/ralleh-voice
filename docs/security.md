@@ -12,6 +12,9 @@
 - HTTP health/readiness endpoints expose non-sensitive metadata.
 - WebSocket event parser rejects malformed/unsupported payloads with structured errors.
 - Adapter runtime failures are surfaced as structured `ADAPTER_FAILURE` events without leaking token values.
+- Inbound WebSocket guardrails enforce max event/chunk/turn-buffer sizes to reduce abuse risk and memory pressure.
+- Unexpected internal pipeline exceptions are redacted to generic `PIPELINE_FAILURE` details.
+- Ingress guardrails bound websocket event size, per-chunk decoded audio size, and per-turn buffered chunks/bytes.
 - `.env.example` uses `*_REF` patterns for secret indirection.
 - Service is intended to run behind Caddy with TLS termination at edge.
 
@@ -32,7 +35,7 @@ Secret material must never appear in:
 
 - authenticated WebSocket session setup (JWT or signed short-lived token)
 - per-tenant/session authorization checks
-- request rate limiting + payload-size limits
+- request rate limiting with identity/session awareness (size limits now exist but do not replace true rate limiting)
 - transcript retention + redaction policy
 - private-network or mTLS enforcement between voice app and OpenClaw bridge
 - keep unauthenticated bridge mode disabled unless ingress is strictly private and controlled

@@ -20,6 +20,7 @@ class OpenClawGatewayBridge:
     agent_target: str
     session_key_prefix: str
     timeout_ms: int = 10000
+    prompt_max_chars: int = 12000
 
     async def ask(self, prompt: str, session_id: str) -> str:
         prompt_text = " ".join(prompt.split()).strip()
@@ -29,6 +30,15 @@ class OpenClawGatewayBridge:
                 detail="Bridge prompt was empty after normalization.",
                 component="openclaw_bridge",
                 hint="Ensure upstream STT yields a non-empty transcript before bridge invocation.",
+            )
+
+        if len(prompt_text) > self.prompt_max_chars:
+            raise AdapterError(
+                code="INPUT_TOO_LARGE",
+                detail="Bridge prompt exceeds configured max character limit.",
+                component="openclaw_bridge",
+                hint="Reduce upstream transcript size or increase RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS.",
+                meta={"limit": self.prompt_max_chars},
             )
 
         base_url = self.gateway_url.rstrip("/")
