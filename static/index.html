@@ -3,89 +3,626 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ralleh Voice MVP (browser)</title>
+  <title>Ralleh Voice Control Room</title>
   <style>
     :root {
       color-scheme: light dark;
-      font-family: system-ui, sans-serif;
+      --bg: #0a1020;
+      --panel: #121a2d;
+      --panel-2: #0e1528;
+      --line: #31415f;
+      --ink: #e8edfa;
+      --ink-soft: #9eb0d7;
+      --accent: #5aa0ff;
+      --good: #4ccd84;
+      --warn: #ffb54f;
+      --bad: #ff6d6d;
+      --radius: 14px;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
-    body { margin: 1rem; max-width: 920px; }
-    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-    button { padding: 0.55rem 0.85rem; }
-    button:disabled { opacity: 0.6; }
-    .status { padding: 0.5rem 0.75rem; border-radius: 0.4rem; border: 1px solid #8886; margin-bottom: 1rem; }
-    .log {
-      border: 1px solid #8886;
-      border-radius: 0.4rem;
-      padding: 0.75rem;
-      min-height: 260px;
-      max-height: 460px;
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f4f7ff;
+        --panel: #ffffff;
+        --panel-2: #eef3ff;
+        --line: #ccd8ef;
+        --ink: #15213c;
+        --ink-soft: #536488;
+        --accent: #2c6ee8;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #1a2b4f44, transparent 35%), var(--bg);
+      color: var(--ink);
+    }
+
+    .container {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .hero,
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: 0 14px 36px #0000001f;
+    }
+
+    .hero {
+      padding: 1rem 1.1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2vw, 1.4rem);
+    }
+
+    .hero .sub {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      margin-top: 0.3rem;
+    }
+
+    .hero-right {
+      text-align: right;
+      min-width: 200px;
+    }
+
+    .state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 0.52rem;
+      height: 0.52rem;
+      border-radius: 50%;
+      background: var(--ink-soft);
+    }
+
+    .dot.connected,
+    .dot.listening,
+    .dot.processing { background: var(--good); }
+    .dot.connecting { background: var(--warn); }
+    .dot.disconnected { background: var(--bad); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.08fr 1.25fr;
+      gap: 1rem;
+    }
+
+    .panel {
+      padding: 0.95rem;
+    }
+
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.98rem;
+      letter-spacing: 0.01em;
+    }
+
+    .controls {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .group {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .group label,
+    .small-label {
+      color: var(--ink-soft);
+      font-size: 0.78rem;
+      letter-spacing: 0.01em;
+    }
+
+    select,
+    input[type="text"],
+    input[type="password"],
+    input[type="number"] {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--ink);
+      padding: 0.58rem 0.62rem;
+      font: inherit;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.7rem;
+    }
+
+    .stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    button {
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--ink);
+      padding: 0.58rem 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: #478af7;
+      background: linear-gradient(180deg, #5ea3ff, #2d70e6);
+      color: #fff;
+    }
+
+    button.warn {
+      border-color: #cf8d3b;
+      background: linear-gradient(180deg, #f0b35f, #cb842f);
+      color: #111;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .hint {
+      color: var(--ink-soft);
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.62rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+      padding: 0.65rem;
+      min-height: 90px;
+    }
+
+    .card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+    }
+
+    .metric {
+      font-weight: 700;
+      font-size: 1.03rem;
+    }
+
+    .tiny {
+      color: var(--ink-soft);
+      font-size: 0.77rem;
+      margin-top: 0.25rem;
+      line-height: 1.25;
+    }
+
+    .meter-wrap {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #00000022;
+      padding: 0.58rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .meter-canvas {
+      width: 100%;
+      height: 72px;
+      display: block;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #00000055, #00000018);
+    }
+
+    .meter-stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-top: 0.45rem;
+      font-size: 0.8rem;
+    }
+
+    .clip {
+      font-weight: 700;
+      color: var(--good);
+    }
+
+    .clip.warn { color: var(--warn); }
+    .clip.bad { color: var(--bad); }
+
+    .timeline {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.65rem;
+      max-height: 380px;
       overflow: auto;
-      background: #00000015;
-      white-space: pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.85rem;
+      display: grid;
+      gap: 0.45rem;
+      background: #00000014;
     }
-    .hint { font-size: 0.9rem; opacity: 0.85; }
+
+    .entry {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.48rem 0.55rem;
+      background: var(--panel-2);
+    }
+
+    .entry.user { border-left: 4px solid #43af7c; }
+    .entry.agent { border-left: 4px solid #548fff; }
+    .entry.system { border-left: 4px solid #b39ae4; }
+    .entry.error { border-left: 4px solid #f07070; }
+    .entry.partial { border-left: 4px solid #f5b25a; }
+
+    .entry .head {
+      color: var(--ink-soft);
+      font-size: 0.74rem;
+      margin-bottom: 0.2rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.4rem;
+    }
+
+    .entry .body {
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.5rem 0.62rem;
+      background: var(--panel-2);
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.86rem;
+    }
+
+    pre {
+      margin: 0.6rem 0 0;
+      max-height: 240px;
+      overflow: auto;
+      background: #0000002b;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.6rem;
+      font-size: 0.74rem;
+      line-height: 1.35;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .setup-grid {
+      display: grid;
+      gap: 0.7rem;
+      margin-top: 0.65rem;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.44rem;
+      font-size: 0.84rem;
+      color: var(--ink-soft);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.76rem;
+      word-break: break-all;
+    }
+
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0.7rem; }
+      .row,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+      .hero-right { text-align: left; }
+      .stack button { flex: 1 1 calc(50% - 0.6rem); }
+    }
   </style>
 </head>
 <body>
-  <h1>Ralleh Voice MVP (Phase 1)</h1>
-  <p class="hint">
-    Browser microphone capture + WebSocket chunk streaming.
-    Current server response audio is a base64-text placeholder (not playable PCM yet).
-  </p>
+  <main class="container">
+    <section class="hero" aria-label="Control room header">
+      <div>
+        <h1>Ralleh Voice · Control Room</h1>
+        <p class="sub">Agent-aware browser cockpit for mic streaming, turn visibility, and real-time tuning.</p>
+      </div>
+      <div class="hero-right">
+        <div class="state-badge"><span id="stateDot" class="dot disconnected"></span><span id="stateLabel">Disconnected</span></div>
+        <div class="sub" id="transportLabel">WS: /v1/ws/voice</div>
+      </div>
+    </section>
 
-  <div id="status" class="status">State: disconnected</div>
+    <section class="grid">
+      <article class="panel" aria-label="Session configuration">
+        <h2>Voice Session Setup</h2>
 
-  <div class="row">
-    <button id="connect">Connect</button>
-    <button id="disconnect" disabled>Disconnect</button>
-    <button id="startMic" disabled>Start mic</button>
-    <button id="stopMic" disabled>Stop mic (send audio.input.end)</button>
-    <button id="cancel" disabled>Cancel / barge-in</button>
-  </div>
+        <div class="controls">
+          <div class="row">
+            <div class="group">
+              <label for="agentTarget">Agent target</label>
+              <select id="agentTarget">
+                <option value="openclaw/default">Default Agent</option>
+                <option value="openclaw/ralleh">Ralleh</option>
+                <option value="openclaw/research">Research Assistant</option>
+                <option value="openclaw/support">Support Agent</option>
+                <option value="custom">Custom target…</option>
+              </select>
+            </div>
+            <div class="group">
+              <label for="voiceProfile">Voice profile</label>
+              <select id="voiceProfile">
+                <option value="neutral-clear">Neutral · Clear</option>
+                <option value="warm-concise">Warm · Concise</option>
+                <option value="energetic-fast">Energetic · Fast</option>
+                <option value="deep-calm">Deep · Calm</option>
+              </select>
+            </div>
+          </div>
 
-  <div class="row">
-    <label>Chunk ms: <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" /></label>
-    <label>Reconnect: <input id="autoReconnect" type="checkbox" checked /></label>
-  </div>
+          <div id="customAgentWrap" class="group" hidden>
+            <label for="customAgentTarget">Custom agent target</label>
+            <input id="customAgentTarget" type="text" placeholder="openclaw/your-agent" autocomplete="off" />
+          </div>
 
-  <div class="row">
-    <label style="display:flex;align-items:center;gap:0.4rem;">
-      Session token:
-      <input id="authToken" type="password" placeholder="optional (required when server auth is enabled)" style="min-width: 360px;" autocomplete="off" />
-    </label>
-  </div>
+          <div class="row">
+            <div class="group">
+              <label for="conversationMode">Conversation mode</label>
+              <select id="conversationMode">
+                <option value="command">Command</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="companion">Companion</option>
+                <option value="debug">Debug</option>
+              </select>
+            </div>
+            <div class="group">
+              <label for="performanceMode">Performance mode</label>
+              <select id="performanceMode">
+                <option value="eco">Eco</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="low-latency">Low latency</option>
+              </select>
+            </div>
+          </div>
 
-  <h2>Transcript / reply log</h2>
-  <div id="log" class="log"></div>
+          <div class="row">
+            <div class="group">
+              <label for="chunkProfile">Responsiveness tuning</label>
+              <select id="chunkProfile">
+                <option value="snappy">Snappy (120ms chunks)</option>
+                <option value="balanced" selected>Balanced (240ms chunks)</option>
+                <option value="steady">Steady (320ms chunks)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="group">
+              <label for="bargeSensitivity">Barge-in sensitivity: <span id="bargeSensitivityValue">60</span>%</label>
+              <input id="bargeSensitivity" type="range" min="0" max="100" step="1" value="60" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="group">
+              <label for="outputVolume">Output volume (future playback path)</label>
+              <input id="outputVolume" type="range" min="0" max="100" step="1" value="100" />
+              <p class="hint">Output PCM playback is not wired yet; this setting is future-ready only.</p>
+            </div>
+            <div class="group">
+              <label for="voicePreview">Voice preview</label>
+              <button id="voicePreview" disabled aria-disabled="true">Preview voice (coming soon)</button>
+              <p class="hint">Voice profile is sent as session preference metadata for now.</p>
+            </div>
+          </div>
+
+          <div class="stack">
+            <button id="connectBtn" class="primary">Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+            <button id="startMicBtn" disabled class="primary">Start mic</button>
+            <button id="stopMicBtn" disabled>Stop mic + send turn</button>
+            <button id="cancelBtn" disabled class="warn">Cancel / barge-in</button>
+            <button id="clearTimelineBtn">Clear timeline</button>
+          </div>
+
+          <p class="hint">Honest boundary: server currently returns placeholder `audio.output.chunk` text, not playable synthesized audio yet.</p>
+        </div>
+      </article>
+
+      <article class="panel" aria-label="Live status and timeline">
+        <h2>Live Status</h2>
+
+        <div class="cards" role="status" aria-live="polite">
+          <div class="card">
+            <h3>Connection</h3>
+            <div class="metric" id="cardConnection">Disconnected</div>
+            <div class="tiny" id="cardReconnect">Auto reconnect enabled</div>
+          </div>
+          <div class="card">
+            <h3>Session</h3>
+            <div class="metric mono" id="cardSession">pending</div>
+            <div class="tiny" id="cardSessionMeta">No authenticated hello yet</div>
+          </div>
+          <div class="card">
+            <h3>Input Level</h3>
+            <div class="metric" id="cardInputLevel">-∞ dB</div>
+            <div class="tiny" id="cardClipStatus">No clipping detected</div>
+          </div>
+          <div class="card">
+            <h3>Turn Latency</h3>
+            <div class="metric" id="cardTurnLatency">n/a</div>
+            <div class="tiny" id="cardPerfMeta">First response n/a · reconnects 0</div>
+          </div>
+        </div>
+
+        <div class="meter-wrap">
+          <canvas id="meterCanvas" class="meter-canvas" width="620" height="72" aria-label="Microphone waveform and level meter"></canvas>
+          <div class="meter-stats">
+            <span>RMS: <strong id="rmsValue">0.000</strong></span>
+            <span>Peak: <strong id="peakValue">0.000</strong></span>
+            <span class="clip" id="clipBadge">Safe headroom</span>
+          </div>
+        </div>
+
+        <h2 style="margin-top:0.2rem;">Transcript & Reply Timeline</h2>
+        <div id="timeline" class="timeline" aria-live="polite" aria-label="Conversation timeline"></div>
+
+        <details style="margin-top:0.7rem;">
+          <summary>Setup & debug (auth, reconnect, protocol stream)</summary>
+          <div class="setup-grid">
+            <div class="row">
+              <label class="checkbox" for="autoReconnect">
+                <input id="autoReconnect" type="checkbox" checked />
+                Auto reconnect WebSocket
+              </label>
+              <label class="checkbox" for="fadeOnCancel">
+                <input id="fadeOnCancel" type="checkbox" disabled />
+                Fade output on cancel (pending playable output)
+              </label>
+            </div>
+
+            <div class="row">
+              <div class="group">
+                <label for="chunkMs">Custom chunk duration (ms)</label>
+                <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" inputmode="numeric" />
+              </div>
+              <div class="group">
+                <label for="authToken">Session token (never persisted)</label>
+                <input id="authToken" type="password" placeholder="required only when WS auth is enabled" autocomplete="off" />
+              </div>
+            </div>
+
+            <p class="hint">Token stays in-memory only and is never written to localStorage.</p>
+            <pre id="debugLog" aria-label="Protocol event stream"></pre>
+          </div>
+        </details>
+      </article>
+    </section>
+  </main>
 
   <script>
     const wsPath = '/v1/ws/voice';
-    const statusEl = document.getElementById('status');
-    const logEl = document.getElementById('log');
+    const prefKey = 'ralleh.voice.control-room.v1';
 
-    const connectBtn = document.getElementById('connect');
-    const disconnectBtn = document.getElementById('disconnect');
-    const startMicBtn = document.getElementById('startMic');
-    const stopMicBtn = document.getElementById('stopMic');
-    const cancelBtn = document.getElementById('cancel');
-    const autoReconnectEl = document.getElementById('autoReconnect');
+    const stateLabel = document.getElementById('stateLabel');
+    const stateDot = document.getElementById('stateDot');
+
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const startMicBtn = document.getElementById('startMicBtn');
+    const stopMicBtn = document.getElementById('stopMicBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const clearTimelineBtn = document.getElementById('clearTimelineBtn');
+
+    const agentTargetEl = document.getElementById('agentTarget');
+    const customAgentWrapEl = document.getElementById('customAgentWrap');
+    const customAgentTargetEl = document.getElementById('customAgentTarget');
+    const voiceProfileEl = document.getElementById('voiceProfile');
+    const conversationModeEl = document.getElementById('conversationMode');
+    const performanceModeEl = document.getElementById('performanceMode');
+    const chunkProfileEl = document.getElementById('chunkProfile');
     const chunkMsEl = document.getElementById('chunkMs');
+    const bargeSensitivityEl = document.getElementById('bargeSensitivity');
+    const bargeSensitivityValueEl = document.getElementById('bargeSensitivityValue');
+    const outputVolumeEl = document.getElementById('outputVolume');
+    const autoReconnectEl = document.getElementById('autoReconnect');
+    const fadeOnCancelEl = document.getElementById('fadeOnCancel');
     const authTokenEl = document.getElementById('authToken');
+
+    const timelineEl = document.getElementById('timeline');
+    const debugLogEl = document.getElementById('debugLog');
+    const meterCanvas = document.getElementById('meterCanvas');
+    const meterCtx = meterCanvas.getContext('2d');
+
+    const cardConnectionEl = document.getElementById('cardConnection');
+    const cardReconnectEl = document.getElementById('cardReconnect');
+    const cardSessionEl = document.getElementById('cardSession');
+    const cardSessionMetaEl = document.getElementById('cardSessionMeta');
+    const cardInputLevelEl = document.getElementById('cardInputLevel');
+    const cardClipStatusEl = document.getElementById('cardClipStatus');
+    const cardTurnLatencyEl = document.getElementById('cardTurnLatency');
+    const cardPerfMetaEl = document.getElementById('cardPerfMeta');
+
+    const rmsValueEl = document.getElementById('rmsValue');
+    const peakValueEl = document.getElementById('peakValue');
+    const clipBadgeEl = document.getElementById('clipBadge');
 
     let ws = null;
     let reconnectTimer = null;
     let reconnectAttempt = 0;
+    let reconnectCount = 0;
     let manuallyDisconnected = false;
 
     let mediaStream = null;
     let audioContext = null;
     let sourceNode = null;
     let processorNode = null;
+    let analyserNode = null;
+    let meterAnimationFrame = null;
+
     let currentChunk = [];
     let flushInterval = null;
+
+    let totalChunksSent = 0;
+    let totalBytesSent = 0;
+    let currentSessionId = null;
+    let previousSessionId = null;
+    let turnsCompleted = 0;
+
+    let turnStats = {
+      micStartedAt: 0,
+      endSentAt: 0,
+      firstResponseAt: 0,
+      doneAt: 0
+    };
 
     const STATE = {
       disconnected: 'disconnected',
@@ -96,33 +633,180 @@
     };
     let state = STATE.disconnected;
 
-    function setState(next) {
-      state = next;
-      statusEl.textContent = `State: ${state}`;
+    function nowIsoClock() {
+      return new Date().toISOString().slice(11, 19);
+    }
 
+    function logDebug(prefix, payload) {
+      const text = payload === undefined ? prefix : `${prefix} ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`;
+      debugLogEl.textContent += `[${nowIsoClock()}] ${text}\n`;
+      debugLogEl.scrollTop = debugLogEl.scrollHeight;
+    }
+
+    function addTimeline(kind, body, meta = '') {
+      const entry = document.createElement('article');
+      entry.className = `entry ${kind}`;
+
+      const head = document.createElement('div');
+      head.className = 'head';
+      head.innerHTML = `<span>${kind.toUpperCase()}</span><span>${nowIsoClock()}</span>`;
+
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'body';
+      bodyEl.textContent = body || '(empty)';
+
+      entry.appendChild(head);
+      entry.appendChild(bodyEl);
+
+      if (meta) {
+        const metaEl = document.createElement('div');
+        metaEl.className = 'tiny';
+        metaEl.textContent = meta;
+        entry.appendChild(metaEl);
+      }
+
+      timelineEl.appendChild(entry);
+      timelineEl.scrollTop = timelineEl.scrollHeight;
+    }
+
+    function clearTimeline() {
+      timelineEl.textContent = '';
+      addTimeline('system', 'Timeline cleared.');
+    }
+
+    function getStateLabel(value) {
+      if (value === STATE.disconnected) return 'Disconnected';
+      if (value === STATE.connecting) return 'Connecting';
+      if (value === STATE.connected) return 'Connected';
+      if (value === STATE.listening) return 'Listening';
+      if (value === STATE.processing) return 'Processing';
+      return value;
+    }
+
+    function renderState() {
       const isConnected = ws && ws.readyState === WebSocket.OPEN;
+      stateLabel.textContent = getStateLabel(state);
+      stateDot.className = `dot ${state}`;
+
       connectBtn.disabled = isConnected || state === STATE.connecting;
       disconnectBtn.disabled = !isConnected;
       startMicBtn.disabled = !isConnected || state === STATE.listening;
       stopMicBtn.disabled = state !== STATE.listening;
       cancelBtn.disabled = !isConnected;
+
+      cardConnectionEl.textContent = `${getStateLabel(state)}${isConnected ? ' · live' : ''}`;
+      cardReconnectEl.textContent = `Auto reconnect ${autoReconnectEl.checked ? 'enabled' : 'disabled'} · attempts ${reconnectAttempt}`;
     }
 
-    function log(prefix, payload) {
-      const ts = new Date().toISOString().slice(11, 19);
-      const line = payload === undefined ? `[${ts}] ${prefix}` : `[${ts}] ${prefix} ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`;
-      logEl.textContent += `${line}\n`;
-      logEl.scrollTop = logEl.scrollHeight;
+    function setState(next) {
+      state = next;
+      renderState();
+    }
+
+    function effectiveAgentTarget() {
+      if (agentTargetEl.value === 'custom') {
+        return customAgentTargetEl.value.trim() || 'openclaw/default';
+      }
+      return agentTargetEl.value;
+    }
+
+    function effectiveChunkMs() {
+      const profile = chunkProfileEl.value;
+      if (profile === 'snappy') return 120;
+      if (profile === 'balanced') return 240;
+      if (profile === 'steady') return 320;
+      return Math.max(80, Math.min(1000, Number(chunkMsEl.value) || 240));
+    }
+
+    function persistPrefs() {
+      const prefs = {
+        agentTarget: agentTargetEl.value,
+        customAgentTarget: customAgentTargetEl.value,
+        voiceProfile: voiceProfileEl.value,
+        conversationMode: conversationModeEl.value,
+        performanceMode: performanceModeEl.value,
+        chunkProfile: chunkProfileEl.value,
+        chunkMs: Math.max(80, Math.min(1000, Number(chunkMsEl.value) || 240)),
+        bargeSensitivity: Number(bargeSensitivityEl.value) || 60,
+        outputVolume: Number(outputVolumeEl.value) || 100,
+        autoReconnect: !!autoReconnectEl.checked
+      };
+      localStorage.setItem(prefKey, JSON.stringify(prefs));
+    }
+
+    function loadPrefs() {
+      try {
+        const raw = localStorage.getItem(prefKey);
+        if (!raw) return;
+        const prefs = JSON.parse(raw);
+
+        if (typeof prefs.agentTarget === 'string') agentTargetEl.value = prefs.agentTarget;
+        if (typeof prefs.customAgentTarget === 'string') customAgentTargetEl.value = prefs.customAgentTarget;
+        if (typeof prefs.voiceProfile === 'string') voiceProfileEl.value = prefs.voiceProfile;
+        if (typeof prefs.conversationMode === 'string') conversationModeEl.value = prefs.conversationMode;
+        if (typeof prefs.performanceMode === 'string') performanceModeEl.value = prefs.performanceMode;
+        if (typeof prefs.chunkProfile === 'string') chunkProfileEl.value = prefs.chunkProfile;
+        if (typeof prefs.chunkMs === 'number') chunkMsEl.value = String(Math.round(prefs.chunkMs));
+        if (typeof prefs.bargeSensitivity === 'number') bargeSensitivityEl.value = String(Math.round(prefs.bargeSensitivity));
+        if (typeof prefs.outputVolume === 'number') outputVolumeEl.value = String(Math.round(prefs.outputVolume));
+        if (typeof prefs.autoReconnect === 'boolean') autoReconnectEl.checked = prefs.autoReconnect;
+      } catch (err) {
+        logDebug('! local prefs parse failed', err?.message || String(err));
+      }
+    }
+
+    function syncAgentTargetUI() {
+      customAgentWrapEl.hidden = agentTargetEl.value !== 'custom';
+      persistPrefs();
+    }
+
+    function syncBargeLabel() {
+      bargeSensitivityValueEl.textContent = String(bargeSensitivityEl.value);
+      persistPrefs();
+    }
+
+    function syncChunkProfileUI() {
+      if (chunkProfileEl.value !== 'custom') {
+        chunkMsEl.value = String(effectiveChunkMs());
+      }
+      persistPrefs();
+    }
+
+    function updateSessionCard(meta = {}) {
+      if (meta.session_id) {
+        previousSessionId = currentSessionId;
+        currentSessionId = meta.session_id;
+      }
+
+      cardSessionEl.textContent = currentSessionId ? currentSessionId : 'pending';
+
+      const continuity = previousSessionId && currentSessionId && previousSessionId !== currentSessionId
+        ? 'reconnected with new session id'
+        : 'session continuity active';
+      const auth = meta.authenticated ? 'authenticated' : (meta.auth_required ? 'auth pending' : 'open auth mode');
+      const mode = meta.processing_mode ? `processing ${meta.processing_mode}` : 'processing mode unknown';
+
+      cardSessionMetaEl.textContent = `${auth} · ${mode} · ${continuity}`;
+    }
+
+    function updatePerfCards() {
+      const firstMs = turnStats.firstResponseAt && turnStats.endSentAt ? Math.max(0, turnStats.firstResponseAt - turnStats.endSentAt) : 0;
+      const doneMs = turnStats.doneAt && turnStats.endSentAt ? Math.max(0, turnStats.doneAt - turnStats.endSentAt) : 0;
+
+      cardTurnLatencyEl.textContent = doneMs ? `${doneMs} ms` : 'n/a';
+
+      const kb = (totalBytesSent / 1024).toFixed(1);
+      cardPerfMetaEl.textContent = `First response ${firstMs ? `${firstMs} ms` : 'n/a'} · chunks ${totalChunksSent} · ${kb} KB sent · reconnects ${reconnectCount}`;
     }
 
     function wsSend(type, payload = {}) {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        log('! WS not open for send', type);
+        logDebug('! WS not open for send', type);
         return false;
       }
       const msg = { type, payload };
       ws.send(JSON.stringify(msg));
-      log('>', msg);
+      logDebug('>', msg);
       return true;
     }
 
@@ -130,9 +814,12 @@
       if (manuallyDisconnected || !autoReconnectEl.checked) return;
       clearTimeout(reconnectTimer);
       reconnectAttempt += 1;
+      reconnectCount += 1;
       const delay = Math.min(500 * (2 ** (reconnectAttempt - 1)), 5000);
-      log('~ reconnect scheduled', `${delay}ms`);
+      addTimeline('system', `Reconnect scheduled in ${delay}ms.`, `attempt ${reconnectAttempt}`);
       reconnectTimer = setTimeout(connectWs, delay);
+      renderState();
+      updatePerfCards();
     }
 
     function connectWs() {
@@ -145,12 +832,31 @@
       ws.onopen = () => {
         reconnectAttempt = 0;
         setState(STATE.connected);
-        log('✓ connected');
-        const auth_token = (authTokenEl?.value || '').trim();
-        const helloPayload = { client: 'browser-mvp', protocol: 'v0' };
-        if (auth_token) {
-          helloPayload.auth_token = auth_token;
-        }
+        addTimeline('system', 'WebSocket connected.');
+        logDebug('✓ connected');
+
+        const auth_token = (authTokenEl.value || '').trim();
+        const helloPayload = {
+          client: 'browser-control-room',
+          protocol: 'v0',
+          preferences: {
+            agent_target: effectiveAgentTarget(),
+            voice_profile: voiceProfileEl.value,
+            conversation_mode: conversationModeEl.value,
+            performance_mode: performanceModeEl.value,
+            barge_in_sensitivity: Number(bargeSensitivityEl.value),
+            chunk_ms: effectiveChunkMs(),
+            output_volume: Number(outputVolumeEl.value),
+            auto_reconnect: !!autoReconnectEl.checked,
+            fade_on_cancel_requested: !!fadeOnCancelEl.checked
+          },
+          client_meta: {
+            ui: 'control-room-v1',
+            user_agent: navigator.userAgent
+          }
+        };
+
+        if (auth_token) helloPayload.auth_token = auth_token;
         wsSend('session.hello', helloPayload);
       };
 
@@ -159,87 +865,70 @@
         try {
           parsed = JSON.parse(evt.data);
         } catch {
-          log('< raw', evt.data);
+          logDebug('< raw', evt.data);
           return;
         }
-        log('<', parsed);
+        logDebug('<', parsed);
 
-        if (parsed.type === 'session.error') {
-          log('❌ error', `${parsed.payload?.code || 'ERROR'}: ${parsed.payload?.detail || 'unknown error'}`);
+        const type = parsed.type;
+        const payload = parsed.payload || {};
+
+        if (type === 'session.ready') {
+          updateSessionCard(payload.session || {});
+          if (payload.session?.auth_required && !payload.session?.authenticated) {
+            addTimeline('system', 'Connected. Auth required before audio events.');
+          }
         }
-        if (parsed.type === 'stt.partial') {
-          log('… partial', parsed.payload?.text || '(empty)');
+
+        if (type === 'session.error') {
+          addTimeline('error', `${payload.code || 'ERROR'}: ${payload.detail || 'unknown error'}`);
+        }
+
+        if (type === 'stt.partial') {
+          if (!turnStats.firstResponseAt) turnStats.firstResponseAt = performance.now();
+          addTimeline('partial', payload.text || '(empty)');
           setState(STATE.processing);
+          updatePerfCards();
         }
-        if (parsed.type === 'stt.final') {
-          log('📝 transcript', parsed.payload?.text || '(empty)');
+
+        if (type === 'stt.final') {
+          if (!turnStats.firstResponseAt) turnStats.firstResponseAt = performance.now();
+          addTimeline('user', payload.text || '(empty)', payload.turn_id ? `turn ${payload.turn_id}` : '');
           setState(STATE.processing);
+          updatePerfCards();
         }
-        if (parsed.type === 'agent.reply') {
-          log('🤖 reply', parsed.payload?.text || '(empty)');
+
+        if (type === 'agent.reply') {
+          if (!turnStats.firstResponseAt) turnStats.firstResponseAt = performance.now();
+          addTimeline('agent', payload.text || '(empty)', payload.turn_id ? `turn ${payload.turn_id}` : '');
+          updatePerfCards();
         }
-        if (parsed.type === 'session.done') {
+
+        if (type === 'audio.output.chunk') {
+          addTimeline('system', 'Received output chunk placeholder.', payload.encoding || 'encoding unknown');
+        }
+
+        if (type === 'session.done') {
+          turnStats.doneAt = performance.now();
+          turnsCompleted += 1;
+          addTimeline('system', `Turn finished: ${payload.reason || 'complete'}.`, payload.turn_id ? `turn ${payload.turn_id}` : '');
           if (state !== STATE.listening) setState(STATE.connected);
+          updatePerfCards();
         }
       };
 
       ws.onclose = () => {
         cleanupAudio(false);
         setState(STATE.disconnected);
-        log('x disconnected');
+        addTimeline('system', 'Disconnected from server.');
+        logDebug('x disconnected');
         queueReconnect();
       };
 
       ws.onerror = () => {
-        log('! websocket error');
+        addTimeline('error', 'WebSocket transport error occurred.');
+        logDebug('! websocket error');
       };
-    }
-
-    async function startMic() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        log('! connect websocket first');
-        return;
-      }
-
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            sampleRate: 16000,
-            echoCancellation: true,
-            noiseSuppression: true
-          }
-        });
-      } catch (err) {
-        log('! mic permission/device error', err?.message || String(err));
-        return;
-      }
-
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      audioContext = new AudioCtx({ sampleRate: 16000 });
-      await audioContext.resume();
-
-      sourceNode = audioContext.createMediaStreamSource(mediaStream);
-      processorNode = audioContext.createScriptProcessor(4096, 1, 1);
-
-      currentChunk = [];
-      processorNode.onaudioprocess = (event) => {
-        const input = event.inputBuffer.getChannelData(0);
-        for (let i = 0; i < input.length; i += 1) {
-          const s = Math.max(-1, Math.min(1, input[i]));
-          const int16 = s < 0 ? s * 0x8000 : s * 0x7fff;
-          currentChunk.push(int16 | 0);
-        }
-      };
-
-      sourceNode.connect(processorNode);
-      processorNode.connect(audioContext.destination);
-
-      const chunkMs = Math.max(80, Math.min(1000, Number(chunkMsEl.value) || 240));
-      flushInterval = setInterval(() => flushChunk(), chunkMs);
-
-      setState(STATE.listening);
-      log('🎙️ mic started', { chunkMs, sampleRate: audioContext.sampleRate });
     }
 
     function pcm16ToBase64(samples) {
@@ -257,11 +946,135 @@
       return btoa(binary);
     }
 
+    function drawMeter() {
+      if (!analyserNode || !meterCtx) return;
+
+      const width = meterCanvas.width;
+      const height = meterCanvas.height;
+      const arr = new Uint8Array(analyserNode.fftSize);
+      analyserNode.getByteTimeDomainData(arr);
+
+      meterCtx.clearRect(0, 0, width, height);
+      meterCtx.fillStyle = 'rgba(18, 30, 52, 0.55)';
+      meterCtx.fillRect(0, 0, width, height);
+
+      meterCtx.beginPath();
+      meterCtx.lineWidth = 1.6;
+      meterCtx.strokeStyle = '#63a2ff';
+
+      let sum = 0;
+      let peak = 0;
+      for (let i = 0; i < arr.length; i += 1) {
+        const norm = (arr[i] - 128) / 128;
+        const abs = Math.abs(norm);
+        sum += norm * norm;
+        if (abs > peak) peak = abs;
+
+        const x = (i / (arr.length - 1)) * width;
+        const y = (0.5 + norm * 0.42) * height;
+        if (i === 0) meterCtx.moveTo(x, y);
+        else meterCtx.lineTo(x, y);
+      }
+      meterCtx.stroke();
+
+      const rms = Math.sqrt(sum / arr.length);
+      const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+
+      rmsValueEl.textContent = rms.toFixed(3);
+      peakValueEl.textContent = peak.toFixed(3);
+      cardInputLevelEl.textContent = Number.isFinite(db) ? `${db.toFixed(1)} dB` : '-∞ dB';
+
+      if (peak > 0.985) {
+        clipBadgeEl.textContent = 'Clipping risk';
+        clipBadgeEl.className = 'clip bad';
+        cardClipStatusEl.textContent = 'Peak too hot — lower mic gain / move back';
+      } else if (peak > 0.9) {
+        clipBadgeEl.textContent = 'Near limit';
+        clipBadgeEl.className = 'clip warn';
+        cardClipStatusEl.textContent = 'Healthy but close to clipping';
+      } else {
+        clipBadgeEl.textContent = 'Safe headroom';
+        clipBadgeEl.className = 'clip';
+        cardClipStatusEl.textContent = 'No clipping detected';
+      }
+
+      meterAnimationFrame = requestAnimationFrame(drawMeter);
+    }
+
+    async function startMic() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        addTimeline('error', 'Connect WebSocket first.');
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+      } catch (err) {
+        addTimeline('error', `Mic permission/device error: ${err?.message || String(err)}`);
+        return;
+      }
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioCtx({ sampleRate: 16000 });
+      await audioContext.resume();
+
+      sourceNode = audioContext.createMediaStreamSource(mediaStream);
+      processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+      analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = 1024;
+      analyserNode.smoothingTimeConstant = 0.82;
+
+      currentChunk = [];
+      processorNode.onaudioprocess = (event) => {
+        const input = event.inputBuffer.getChannelData(0);
+        for (let i = 0; i < input.length; i += 1) {
+          const s = Math.max(-1, Math.min(1, input[i]));
+          const int16 = s < 0 ? s * 0x8000 : s * 0x7fff;
+          currentChunk.push(int16 | 0);
+        }
+      };
+
+      sourceNode.connect(analyserNode);
+      sourceNode.connect(processorNode);
+      processorNode.connect(audioContext.destination);
+
+      const chunkMs = effectiveChunkMs();
+      flushInterval = setInterval(() => flushChunk(), chunkMs);
+
+      turnStats = {
+        micStartedAt: performance.now(),
+        endSentAt: 0,
+        firstResponseAt: 0,
+        doneAt: 0
+      };
+
+      cancelAnimationFrame(meterAnimationFrame);
+      drawMeter();
+
+      setState(STATE.listening);
+      addTimeline('system', 'Microphone started.', `chunk ${chunkMs}ms · mode ${conversationModeEl.value}/${performanceModeEl.value}`);
+      persistPrefs();
+    }
+
     function flushChunk() {
       if (!currentChunk.length) return;
       const samples = currentChunk;
       currentChunk = [];
+
       const pcm_b64 = pcm16ToBase64(samples);
+      const bytes = samples.length * 2;
+      totalChunksSent += 1;
+      totalBytesSent += bytes;
+      updatePerfCards();
+
       wsSend('audio.input.chunk', {
         pcm_b64,
         sample_rate: 16000,
@@ -270,57 +1083,97 @@
       });
     }
 
-    function cleanupAudio(keepWs = true) {
+    function cleanupAudio(updateState = true) {
       clearInterval(flushInterval);
       flushInterval = null;
       currentChunk = [];
+
+      cancelAnimationFrame(meterAnimationFrame);
+      meterAnimationFrame = null;
 
       if (processorNode) {
         processorNode.disconnect();
         processorNode.onaudioprocess = null;
       }
       if (sourceNode) sourceNode.disconnect();
+      if (analyserNode) analyserNode.disconnect();
       if (audioContext) audioContext.close();
       if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
 
       processorNode = null;
       sourceNode = null;
+      analyserNode = null;
       audioContext = null;
       mediaStream = null;
 
-      if (keepWs) setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
+      if (updateState) {
+        setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
+      }
     }
 
     function stopMicAndEndTurn() {
       flushChunk();
       cleanupAudio(false);
+      turnStats.endSentAt = performance.now();
       wsSend('audio.input.end', {});
       setState(STATE.processing);
-      log('🛑 mic stopped; sent audio.input.end');
+      addTimeline('system', 'Mic stopped. Sent audio.input.end.');
     }
 
-    connectBtn.onclick = () => connectWs();
+    connectBtn.addEventListener('click', connectWs);
 
-    disconnectBtn.onclick = () => {
+    disconnectBtn.addEventListener('click', () => {
       manuallyDisconnected = true;
       cleanupAudio(false);
       if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'user_disconnect');
       clearTimeout(reconnectTimer);
       setState(STATE.disconnected);
-    };
+      addTimeline('system', 'Manual disconnect.');
+    });
 
-    startMicBtn.onclick = () => startMic();
-    stopMicBtn.onclick = () => stopMicAndEndTurn();
+    startMicBtn.addEventListener('click', () => startMic());
+    stopMicBtn.addEventListener('click', stopMicAndEndTurn);
 
-    cancelBtn.onclick = () => {
+    cancelBtn.addEventListener('click', () => {
       wsSend('session.cancel', { reason: 'barge-in' });
       cleanupAudio(false);
       setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
-      log('⛔ cancel sent');
-    };
+      addTimeline('system', 'Cancel sent (barge-in).');
+    });
 
-    setState(STATE.disconnected);
-    log('Mobile notes: use HTTPS/localhost for mic permission. iOS Safari requires user gesture to start audio context.');
+    clearTimelineBtn.addEventListener('click', clearTimeline);
+
+    agentTargetEl.addEventListener('change', syncAgentTargetUI);
+    customAgentTargetEl.addEventListener('input', persistPrefs);
+
+    [
+      voiceProfileEl,
+      conversationModeEl,
+      performanceModeEl,
+      outputVolumeEl,
+      autoReconnectEl
+    ].forEach((el) => el.addEventListener('change', () => {
+      persistPrefs();
+      renderState();
+    }));
+
+    bargeSensitivityEl.addEventListener('input', syncBargeLabel);
+    chunkProfileEl.addEventListener('change', syncChunkProfileUI);
+    chunkMsEl.addEventListener('input', () => {
+      chunkProfileEl.value = 'custom';
+      persistPrefs();
+    });
+
+    loadPrefs();
+    syncAgentTargetUI();
+    syncBargeLabel();
+    syncChunkProfileUI();
+    updateSessionCard({});
+    updatePerfCards();
+    renderState();
+
+    addTimeline('system', 'Control Room ready. Use HTTPS/localhost for mic permission on mobile browsers.');
+    logDebug('Control Room initialized. Auth token is in-memory only.');
   </script>
 </body>
 </html>

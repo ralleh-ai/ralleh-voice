@@ -4,7 +4,12 @@ Browser-first voice gateway MVP for the Ralleh stack.
 
 ## Status
 
-**Phase 4 production-hardening foundation (implemented):**
+**Phase 4.1 Control Room UX polish (implemented):**
+- Polished browser "Control Room" UI with responsive cards/panels for agent target, voice profile, conversation mode, performance mode, barge-in sensitivity, and chunk tuning profiles
+- Live microphone waveform/level meter with RMS/peak/clipping warnings
+- Timeline-style transcript/reply/event feed plus collapsible protocol debug stream
+- Session/connection/reconnect/latency/resource counters with client-side instrumentation
+- Local preference persistence for safe UI settings (`localStorage`) without persisting auth tokens
 - Browser/mobile mic capture using Web Audio ScriptProcessor fallback
 - PCM16 mono chunking -> base64 -> WebSocket events
 - Inbound event handling for `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
@@ -48,7 +53,7 @@ uvicorn ralleh_voice.app:app --host 127.0.0.1 --port 8099 --reload
 
 Open:
 - API health: `http://127.0.0.1:8099/v1/healthz`
-- Browser client: `http://127.0.0.1:8099/static/`
+- Browser Control Room: `http://127.0.0.1:8099/static/`
 
 ## Dev and test
 
@@ -135,6 +140,12 @@ Current real-adapter status:
 
 When a selected adapter fails at runtime, WS returns `session.error` with code `ADAPTER_FAILURE` and structured metadata.
 Unexpected internal pipeline exceptions are surfaced as a generic `PIPELINE_FAILURE` message without leaking internal exception text.
+
+Control Room UI behavior (current honest boundary):
+- UI sends `session.hello` preferences metadata (agent/voice/mode/perf/barge/chunk/output volume) for forward compatibility; server may ignore these fields today.
+- Voice profile selection and output volume are currently UX-level preferences and do not imply real TTS voice switching/playback yet.
+- `audio.output.chunk` remains placeholder text output in this phase (not playable PCM stream).
+- Auth token field is available in setup/debug panel but intentionally not persisted locally.
 
 WebSocket auth/bootstrap contract:
 - Server always emits initial `session.ready` with auth requirements, processing mode, and configured rate-limit metadata.

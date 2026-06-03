@@ -1,6 +1,13 @@
 ## [Unreleased]
 
 ### Added
+- CORTEX #409: product polish pass for the browser client with a redesigned responsive Ralleh Voice Control Room UI in `static/index.html`.
+- Agent-aware setup controls (agent target selector + custom target), voice profile selector, conversation/performance modes, and barge-in sensitivity tuning.
+- Audio UX instrumentation: live mic waveform meter, RMS/peak values, clipping warning states, and timeline-style transcript/reply/event feed.
+- Setup/debug drawer with auth token input (in-memory only), reconnect toggle, chunk tuning, and collapsible protocol event stream.
+- Client metadata/preferences attached to `session.hello` payload for forward-compatible server-side policy handling.
+- LocalStorage persistence for non-secret UI preferences only (explicitly excluding auth token persistence).
+
 - CORTEX #407: production-hardening foundation for signed tokens, distributed limiter backend, and lower-buffering streaming turn mode.
 - Signed WebSocket auth mode (`RALLEH_VOICE_WS_AUTH_MODE=signed-token`) with HMAC token verification, short-lived claims, issuer/audience checks, and structured auth failures.
 - Local token utility module/CLI (`python3 -m ralleh_voice.auth_tokens`) to mint/verify signed session tokens using env-var key indirection.
@@ -9,6 +16,7 @@
 - Tests for signed token success/failure/expiry/tamper, limiter memory+redis boundaries, and streaming mode event/cancel behavior.
 
 ### Changed
+- README updated to document Control Room behavior, honest output-audio limitations, and preference persistence boundaries.
 - Initial/session-ready metadata now includes processing mode and rate-limit backend/window configuration.
 - Rate-limit config migrated to `*_PER_WINDOW` names with compatibility aliases for legacy `*_PER_MINUTE` env vars.
 - Shared-secret path preserved; auth failure codes are now more specific (`AUTH_BAD_SIGNATURE`, `AUTH_MISSING_TOKEN`, etc.).
