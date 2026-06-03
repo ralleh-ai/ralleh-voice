@@ -44,6 +44,34 @@ def test_pipeline_deterministic_output():
     assert len(result.audio_chunks) == 1
 
 
+def test_pipeline_passes_raw_speech_bytes_to_stt():
+    seen = []
+
+    class CaptureSTT:
+        async def transcribe_stream(self, chunks):
+            async for chunk in chunks:
+                seen.append(chunk)
+            yield "captured transcript"
+
+    pipeline = VoicePipeline(
+        vad=DeterministicVAD(),
+        stt=CaptureSTT(),
+        bridge=DeterministicOpenClawBridge(),
+        tts=DeterministicTTS(),
+    )
+
+    result = asyncio.run(
+        pipeline.run_turn(
+            _iter_chunks([b"hello", b" ", b"world"]),
+            session_id="sess-bytes",
+            state=TurnState(turn_id=11),
+        )
+    )
+
+    assert seen == [b"hello", b"world"]
+    assert result.transcript == "captured transcript"
+
+
 def test_pipeline_cancelled_before_reply():
     class CancelledBridge:
         async def ask(self, prompt: str, session_id: str) -> str:

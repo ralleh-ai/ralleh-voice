@@ -46,27 +46,26 @@ class VoicePipeline:
         session_id: str,
         state: TurnState,
     ) -> TurnOutput:
-        transcript_parts: list[str] = []
+        speech_chunks: list[bytes] = []
 
         try:
             async for chunk in audio_chunks:
                 self._ensure_not_cancelled(state)
                 if await self.vad.detect_speech(chunk):
-                    transcript_parts.append(chunk.decode("utf-8", errors="ignore"))
+                    speech_chunks.append(chunk)
 
             self._ensure_not_cancelled(state)
 
-            transcript_source = " ".join(part.strip() for part in transcript_parts if part.strip())
-            transcript = transcript_source or "(no transcript)"
+            transcript_source = _best_effort_text(speech_chunks)
 
             stt_parts: list[str] = []
-            async for segment in self.stt.transcribe_stream(_single_text_chunk(transcript)):
+            async for segment in self.stt.transcribe_stream(_chunk_iter(speech_chunks)):
                 self._ensure_not_cancelled(state)
                 cleaned = segment.strip()
                 if cleaned:
                     stt_parts.append(cleaned)
 
-            final_transcript = " ".join(stt_parts).strip() or transcript
+            final_transcript = " ".join(stt_parts).strip() or transcript_source or "(no transcript)"
 
             self._ensure_not_cancelled(state)
             reply = await self.bridge.ask(final_transcript, session_id=session_id)
@@ -120,5 +119,13 @@ class VoicePipeline:
             raise PipelineCancelled("turn cancelled")
 
 
-async def _single_text_chunk(text: str) -> AsyncIterator[bytes]:
-    yield text.encode("utf-8")
+async def _chunk_iter(chunks: list[bytes]) -> AsyncIterator[bytes]:
+    for chunk in chunks:
+        yield chunk
+
+
+def _best_effort_text(chunks: list[bytes]) -> str:
+    if not chunks:
+        return ""
+    text = b" ".join(chunk.strip() for chunk in chunks if chunk.strip()).decode("utf-8", errors="ignore")
+    return " ".join(text.split()).strip()

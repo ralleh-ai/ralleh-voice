@@ -80,6 +80,7 @@ def _build_stt(cfg: Settings) -> STTAdapter:
             model_ref=cfg.faster_whisper_model_ref,
             device=cfg.faster_whisper_device,
             compute_type=cfg.faster_whisper_compute_type,
+            sample_rate=cfg.audio_sample_rate,
         )
     raise ValueError(f"Unsupported STT adapter: {cfg.adapter_stt}")
 
