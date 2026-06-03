@@ -1,12 +1,17 @@
 ## [Unreleased]
 
 ### Added
-- WebSocket inbound guardrails: max event size, max decoded audio chunk size, and max buffered-turn chunk/byte limits with structured errors (`EVENT_TOO_LARGE`, `AUDIO_CHUNK_TOO_LARGE`, `TURN_BUFFER_OVERFLOW`).
-- OpenClaw bridge prompt size guardrail (`RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS`) with `INPUT_TOO_LARGE` error mapping.
+- CORTEX #406: authenticated WebSocket session bootstrap and in-process rate limiting hardening slice.
+- WebSocket auth bootstrap config and contract (`RALLEH_VOICE_WS_AUTH_MODE=off|shared-secret`) with runtime token env-var indirection (`RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR`) and token reference metadata (`RALLEH_VOICE_WS_AUTH_TOKEN_REF`).
+- `session.hello` shared-secret authentication path with structured `AUTH_FAILED`/`AUTH_REQUIRED` handling and clean socket close on failed auth.
+- Session-ready metadata now includes auth requirements and configured limiter settings (without exposing token values).
+- In-process 60-second sliding-window rate limiting for inbound event count and decoded audio bytes with structured `RATE_LIMITED` errors.
+- Browser client session token input and explicit websocket error logging for auth/rate-limit feedback.
+- Tests covering auth disabled path, auth required missing token, bad token rejection/redaction, good token success, and both rate-limit paths.
 
 ### Changed
-- `session.cancel` without active/buffered work no longer emits redundant `session.done` events.
-- Generic pipeline exception reporting now returns `Internal pipeline failure` instead of raw exception strings.
+- WebSocket audio ingress now requires successful hello/auth when auth mode is enabled.
+- Security/deploy/operations docs updated to document one-process limiter limitation and shared-secret bootstrap posture.
 
 # Changelog
 

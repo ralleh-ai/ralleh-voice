@@ -5,7 +5,7 @@ def test_health_payload_shape():
     payload = health_payload()
     assert payload["service"] == "ralleh-voice"
     assert payload["status"] == "ok"
-    assert payload["version"] == "0.2.3"
+    assert payload["version"] == "0.2.4"
     assert "components" in payload
 
 

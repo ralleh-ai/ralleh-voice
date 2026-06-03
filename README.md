@@ -21,7 +21,6 @@ Browser-first voice gateway MVP for the Ralleh stack.
 
 **Not production telephony:**
 - no PSTN/SIP/telephony ingress in this phase
-- no authn/authz yet
 - no real model-backed STT/TTS fully implemented yet (boundaries are wired, runtime integration is partial)
 
 ## Architecture
@@ -84,6 +83,12 @@ Adapter mode selection (deterministic defaults are CI-safe):
 - `RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES=262144`
 - `RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES=8388608`
 - `RALLEH_VOICE_WS_MAX_BUFFERED_CHUNKS=512`
+- `RALLEH_VOICE_WS_AUTH_MODE=off|shared-secret`
+- `RALLEH_VOICE_WS_AUTH_TOKEN_REF=secret:ws_session_shared_secret`
+- `RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR=RALLEH_VOICE_WS_AUTH_TOKEN`
+- `RALLEH_VOICE_WS_AUTH_TOKEN=<runtime token value>`
+- `RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE=600`
+- `RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE=8388608`
 
 Optional heavy dependencies:
 
@@ -110,6 +115,19 @@ Current real-adapter status:
 When a selected adapter fails at runtime, WS returns `session.error` with code `ADAPTER_FAILURE` and structured metadata.
 Unexpected internal pipeline exceptions are surfaced as a generic `PIPELINE_FAILURE` message without leaking internal exception text.
 
+WebSocket auth/bootstrap contract:
+- Server always emits initial `session.ready` with auth requirements and configured rate-limit metadata.
+- In `RALLEH_VOICE_WS_AUTH_MODE=off` (default dev mode), audio can be sent immediately for deterministic local iteration.
+- In `shared-secret` mode, client must send `session.hello` with `payload.auth_token` (or `payload.auth.token`) matching runtime env token (`RALLEH_VOICE_WS_AUTH_TOKEN` by default).
+- Auth failures return structured `session.error` (`AUTH_FAILED`) then close the socket with policy-violation semantics.
+- While auth is required, audio events before successful hello/auth return `AUTH_REQUIRED` and are ignored.
+
+In-process rate-limiting contract (single-process MVP):
+- sliding 60-second window for inbound event count and decoded audio bytes
+- over-limit events return `session.error` code `RATE_LIMITED` with structured `meta.kind` (`events_per_minute` or `audio_bytes_per_minute`)
+- audio-byte over-limit also clears buffered turn state and emits `session.done` with `reason=rate-limited`
+- **limitation:** this limiter is process-local (no Redis/distributed coordination); use distributed identity-aware limits before public multi-instance deployment
+
 ## Deployment posture
 
 **Caddy-first**, loopback-bound app service.
@@ -130,12 +148,13 @@ Current repo policy:
 - no secrets in git
 - `.env` ignored
 - deterministic local adapters for testability
+- shared-secret WS auth token must be runtime-only (never committed)
 
 ## Roadmap (next slices)
 
 1. AudioWorklet path + jitter buffering + playback improvements
 2. Complete Silero/Faster-Whisper/Kokoro runtime audio wiring (beyond boundary/skeleton)
-3. Authenticated WS sessions + rate limits
+3. Distributed identity-aware rate limiting + per-tenant quotas
 4. Telephony transport adapters (separate phase, explicit non-goal here)
 
 ## Honest non-goals (for this phase)

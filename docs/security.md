@@ -15,6 +15,8 @@
 - Inbound WebSocket guardrails enforce max event/chunk/turn-buffer sizes to reduce abuse risk and memory pressure.
 - Unexpected internal pipeline exceptions are redacted to generic `PIPELINE_FAILURE` details.
 - Ingress guardrails bound websocket event size, per-chunk decoded audio size, and per-turn buffered chunks/bytes.
+- Optional shared-secret WebSocket auth mode (`RALLEH_VOICE_WS_AUTH_MODE=shared-secret`) requires `session.hello` token bootstrap before audio is accepted.
+- In-process sliding-window rate limiting covers inbound events/minute and audio bytes/minute with structured `RATE_LIMITED` errors.
 - `.env.example` uses `*_REF` patterns for secret indirection.
 - Service is intended to run behind Caddy with TLS termination at edge.
 
@@ -33,9 +35,9 @@ Secret material must never appear in:
 
 ## Pre-production hardening TODO
 
-- authenticated WebSocket session setup (JWT or signed short-lived token)
+- migrate shared-secret bootstrap to short-lived signed tokens (JWT or equivalent) with rotation and expiry
 - per-tenant/session authorization checks
-- request rate limiting with identity/session awareness (size limits now exist but do not replace true rate limiting)
+- replace process-local limiter with distributed identity/session-aware limiter (Redis or gateway-level)
 - transcript retention + redaction policy
 - private-network or mTLS enforcement between voice app and OpenClaw bridge
 - keep unauthenticated bridge mode disabled unless ingress is strictly private and controlled

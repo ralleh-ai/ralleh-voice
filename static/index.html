@@ -51,6 +51,13 @@
     <label>Reconnect: <input id="autoReconnect" type="checkbox" checked /></label>
   </div>
 
+  <div class="row">
+    <label style="display:flex;align-items:center;gap:0.4rem;">
+      Session token:
+      <input id="authToken" type="password" placeholder="optional (required when server auth is enabled)" style="min-width: 360px;" autocomplete="off" />
+    </label>
+  </div>
+
   <h2>Transcript / reply log</h2>
   <div id="log" class="log"></div>
 
@@ -66,6 +73,7 @@
     const cancelBtn = document.getElementById('cancel');
     const autoReconnectEl = document.getElementById('autoReconnect');
     const chunkMsEl = document.getElementById('chunkMs');
+    const authTokenEl = document.getElementById('authToken');
 
     let ws = null;
     let reconnectTimer = null;
@@ -138,7 +146,12 @@
         reconnectAttempt = 0;
         setState(STATE.connected);
         log('✓ connected');
-        wsSend('session.hello', { client: 'browser-mvp', protocol: 'v0' });
+        const auth_token = (authTokenEl?.value || '').trim();
+        const helloPayload = { client: 'browser-mvp', protocol: 'v0' };
+        if (auth_token) {
+          helloPayload.auth_token = auth_token;
+        }
+        wsSend('session.hello', helloPayload);
       };
 
       ws.onmessage = (evt) => {
@@ -151,6 +164,9 @@
         }
         log('<', parsed);
 
+        if (parsed.type === 'session.error') {
+          log('❌ error', `${parsed.payload?.code || 'ERROR'}: ${parsed.payload?.detail || 'unknown error'}`);
+        }
         if (parsed.type === 'stt.final') {
           log('📝 transcript', parsed.payload?.text || '(empty)');
           setState(STATE.processing);

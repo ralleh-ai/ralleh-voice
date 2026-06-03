@@ -1,6 +1,8 @@
 import base64
 
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from ralleh_voice.app import create_app
 
@@ -166,3 +168,123 @@ def test_ws_pipeline_failure_redacts_internal_exception(monkeypatch):
         assert "sensitive internal detail" not in err["payload"]["detail"]
         assert done["type"] == "session.done"
         assert done["payload"]["reason"] == "error"
+
+
+def test_ws_auth_disabled_dev_path_still_works(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "off")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ready = ws.receive_json()
+        assert ready["type"] == "session.ready"
+        assert ready["payload"]["session"]["auth_required"] is False
+
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        ws.send_json({"type": "audio.input.end", "payload": {}})
+        out = [ws.receive_json() for _ in range(4)]
+        assert [item["type"] for item in out] == ["stt.final", "agent.reply", "audio.output.chunk", "session.done"]
+
+
+def test_ws_auth_enabled_missing_token_blocks_audio(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN", "dummy-secret")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        err = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "AUTH_REQUIRED"
+
+
+def test_ws_auth_enabled_bad_token_rejected_and_redacted(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN", "dummy-secret")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        ws.send_json(
+            {
+                "type": "session.hello",
+                "payload": {"client": "test", "auth_token": "wrong-token"},
+            }
+        )
+        err = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "AUTH_FAILED"
+        assert "wrong-token" not in str(err)
+
+        with pytest.raises(WebSocketDisconnect):
+            ws.send_json({"type": "session.cancel", "payload": {}})
+            ws.receive_json()
+
+
+def test_ws_auth_enabled_good_token_allows_turn(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN", "dummy-secret")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        ws.send_json(
+            {
+                "type": "session.hello",
+                "payload": {"client": "test", "auth_token": "dummy-secret"},
+            }
+        )
+        hello_ack = ws.receive_json()
+        assert hello_ack["type"] == "session.ready"
+        assert hello_ack["payload"]["session"]["authenticated"] is True
+
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        ws.send_json({"type": "audio.input.end", "payload": {}})
+        out = [ws.receive_json() for _ in range(4)]
+        assert [item["type"] for item in out] == ["stt.final", "agent.reply", "audio.output.chunk", "session.done"]
+
+
+def test_ws_rate_limit_event_count(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE", "2")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "session.cancel", "payload": {"reason": "one"}})
+        ws.send_json({"type": "session.cancel", "payload": {"reason": "two"}})
+        ws.send_json({"type": "session.cancel", "payload": {"reason": "three"}})
+        err = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "RATE_LIMITED"
+        assert err["payload"]["meta"]["kind"] == "events_per_minute"
+
+
+def test_ws_rate_limit_audio_bytes(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE", "10")
+    monkeypatch.setenv("RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES", "1024")
+    monkeypatch.setenv("RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES", "1024")
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        chunk = base64.b64encode(b"1234567890").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": chunk}})
+
+        chunk_over = base64.b64encode(b"x").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": chunk_over}})
+        err = ws.receive_json()
+        done = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "RATE_LIMITED"
+        assert err["payload"]["meta"]["kind"] == "audio_bytes_per_minute"
+        assert done["type"] == "session.done"
+        assert done["payload"]["reason"] == "rate-limited"

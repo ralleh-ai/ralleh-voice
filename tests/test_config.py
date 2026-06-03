@@ -34,3 +34,28 @@ def test_load_settings_rejects_invalid_ws_limits(monkeypatch):
     monkeypatch.setenv("RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES", "1024")
     with pytest.raises(ValueError):
         load_settings()
+
+
+def test_load_settings_ws_auth_defaults(monkeypatch):
+    monkeypatch.delenv("RALLEH_VOICE_WS_AUTH_MODE", raising=False)
+    cfg = load_settings()
+    assert cfg.ws_auth_mode == "off"
+    assert cfg.ws_auth_token_env_var == "RALLEH_VOICE_WS_AUTH_TOKEN"
+
+
+def test_load_settings_rejects_shared_secret_without_token(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR", "RALLEH_VOICE_WS_AUTH_TOKEN")
+    monkeypatch.delenv("RALLEH_VOICE_WS_AUTH_TOKEN", raising=False)
+
+    with pytest.raises(ValueError):
+        load_settings()
+
+
+def test_load_settings_shared_secret_accepts_env_token(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR", "RALLEH_VOICE_WS_AUTH_TOKEN")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN", "dummy-test-token")
+
+    cfg = load_settings()
+    assert cfg.ws_auth_mode == "shared-secret"

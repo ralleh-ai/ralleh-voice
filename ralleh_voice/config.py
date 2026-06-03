@@ -8,6 +8,7 @@ _ALLOWED_VAD = {"deterministic", "stub", "silero"}
 _ALLOWED_STT = {"deterministic", "stub", "faster-whisper"}
 _ALLOWED_TTS = {"deterministic", "stub", "kokoro"}
 _ALLOWED_BRIDGE = {"deterministic", "stub", "openclaw-gateway"}
+_ALLOWED_WS_AUTH_MODE = {"off", "shared-secret"}
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -44,6 +45,11 @@ class Settings:
     ws_max_audio_chunk_bytes: int = 262144
     ws_max_buffered_chunks: int = 512
     ws_max_buffered_audio_bytes: int = 8388608
+    ws_auth_mode: str = "off"
+    ws_auth_token_ref: str = "secret:ws_session_shared_secret"
+    ws_auth_token_env_var: str = "RALLEH_VOICE_WS_AUTH_TOKEN"
+    ws_rate_limit_events_per_minute: int = 600
+    ws_rate_limit_audio_bytes_per_minute: int = 8388608
     openclaw_gateway_url: str = "http://127.0.0.1:18789"
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
     openclaw_gateway_token_env_var: str = "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN"
@@ -76,6 +82,16 @@ def _validate_settings(cfg: Settings) -> Settings:
         raise ValueError(
             "RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES must be <= RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES"
         )
+
+    if cfg.ws_auth_mode == "shared-secret":
+        token_env_var = cfg.ws_auth_token_env_var.strip()
+        if not token_env_var:
+            raise ValueError("RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR must be non-empty when shared-secret auth is enabled")
+        if not os.getenv(token_env_var, "").strip():
+            raise ValueError(
+                f"{token_env_var} must be set to a non-empty token when RALLEH_VOICE_WS_AUTH_MODE=shared-secret"
+            )
+
     return cfg
 
 
@@ -92,6 +108,19 @@ def load_settings() -> Settings:
         ws_max_buffered_chunks=_env_int_min("RALLEH_VOICE_WS_MAX_BUFFERED_CHUNKS", 512, 1),
         ws_max_buffered_audio_bytes=_env_int_min(
             "RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES", 8388608, 1024
+        ),
+        ws_auth_mode=_env_choice("RALLEH_VOICE_WS_AUTH_MODE", "off", _ALLOWED_WS_AUTH_MODE),
+        ws_auth_token_ref=os.getenv(
+            "RALLEH_VOICE_WS_AUTH_TOKEN_REF", "secret:ws_session_shared_secret"
+        ),
+        ws_auth_token_env_var=os.getenv(
+            "RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR", "RALLEH_VOICE_WS_AUTH_TOKEN"
+        ),
+        ws_rate_limit_events_per_minute=_env_int_min(
+            "RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE", 600, 1
+        ),
+        ws_rate_limit_audio_bytes_per_minute=_env_int_min(
+            "RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE", 8388608, 1
         ),
         openclaw_gateway_url=os.getenv(
             "RALLEH_VOICE_OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789"
