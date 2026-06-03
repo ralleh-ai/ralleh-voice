@@ -26,14 +26,18 @@ spec:
           kind: systemd-env
           path: /etc/ralleh-voice/ralleh-voice.env
           mode: "0600"
+    openclaw:
+      gatewayUrl: http://127.0.0.1:18789
+      agentTarget: openclaw/default
+      tokenEnvVar: RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN
 ```
 
 ## Secret refs/delivery
 
 No inline values in manifest. Use existing `spec.secrets` backend references and delivery model.
 
-Minimum required secret refs when `enabled=true`:
-- `secret:openclaw_gateway_token` for bridge auth (or successor auth secret)
+Minimum required secret refs when `enabled=true` (unless explicitly allowing unauthenticated private ingress):
+- `secret:openclaw_gateway_token` for bridge auth
 
 ## Generated artifacts expected from provisioner
 

@@ -1,4 +1,4 @@
-# Deploy contract (v0.2 phase-2 adapter wiring)
+# Deploy contract (v0.2.1 phase-3 OpenClaw bridge)
 
 ## Runtime artifact contract
 
@@ -19,6 +19,7 @@ Provisioning or install flow should produce:
 
 - `GET /v1/healthz` -> `{status:"ok", ...}`
 - `GET /v1/readyz` -> `{ready:<bool>, adapters:{...}, ...}`
+  - for `openclaw-gateway` bridge mode, readiness must include real bridge config availability (URL/agent target/token policy)
 
 ## WS contract
 

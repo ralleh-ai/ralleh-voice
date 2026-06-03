@@ -27,6 +27,7 @@ When reporting, include:
 - no authentication/authorization on WS path yet
 - no production-grade rate limiting yet
 - deterministic placeholder adapters by default
-- openclaw-gateway bridge mode requires pinned endpoint contract before activation
+- openclaw-gateway bridge mode uses pinned `POST /v1/chat/completions` gateway contract
+- bridge token values are runtime-only and must not appear in logs, tests, or error payloads
 
 Do not deploy this MVP on a public internet endpoint without additional hardening.

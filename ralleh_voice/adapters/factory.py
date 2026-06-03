@@ -91,6 +91,10 @@ def _build_bridge(cfg: Settings) -> OpenClawBridge:
         return OpenClawGatewayBridge(
             gateway_url=cfg.openclaw_gateway_url,
             token_ref=cfg.openclaw_token_ref,
+            token_env_var=cfg.openclaw_gateway_token_env_var,
+            allow_unauthenticated=cfg.openclaw_gateway_allow_unauthenticated,
+            agent_target=cfg.openclaw_agent_target,
+            session_key_prefix=cfg.openclaw_session_key_prefix,
             timeout_ms=cfg.openclaw_gateway_timeout_ms,
         )
     raise ValueError(f"Unsupported bridge adapter: {cfg.adapter_bridge}")

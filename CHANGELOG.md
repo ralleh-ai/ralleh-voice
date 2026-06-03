@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.2] - 2026-06-03
+
+### Added
+- Phase 3 OpenClaw bridge contract implementation using documented local Gateway endpoint `POST /v1/chat/completions`.
+- Real `OpenClawGatewayBridge.ask()` request/response path with deterministic session-key routing header and configurable agent target.
+- Bridge config surface for token env indirection, unauthenticated private-ingress override, agent target, and session-key prefix.
+- Structured bridge error mapping: `CONFIG_ERROR`, `AUTH_FAILED`, `TIMEOUT`, `NETWORK_ERROR`, `UNSUPPORTED_API`, `UPSTREAM_ERROR`, `CONTRACT_MISMATCH`.
+- Deterministic tests for bridge success, timeout, config validation, contract mismatch, and token redaction.
+
+### Changed
+- `/v1/readyz` now reports `openclaw-gateway` bridge readiness based on actual required config (URL/agent/token policy).
+- Adapter factory wiring now passes full bridge runtime config to the OpenClaw bridge implementation.
+- Docs updated from Phase 2 bridge blocker to Phase 3 pinned bridge contract.
+
+### Notes
+- CI remains deterministic/fast and does not require optional voice-model dependencies.
+
 ## [0.2.1] - 2026-06-03
 
 ### Added
@@ -16,7 +33,7 @@
 - Added optional `voice` dependency extras for local model-backed integration work.
 
 ### Notes
-- OpenClaw gateway bridge remains strict skeleton (`MISSING_ENDPOINT`) until stable endpoint contract is pinned in-repo.
+- OpenClaw gateway bridge was strict skeleton (`MISSING_ENDPOINT`) in this phase.
 - CI remains deterministic/fast and does not install model-heavy optional dependencies.
 
 ## [0.2.0] - 2026-06-03

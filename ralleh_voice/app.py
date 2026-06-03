@@ -6,6 +6,7 @@ import binascii
 import json
 import uuid
 from dataclasses import dataclass, field
+import os
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -52,7 +53,7 @@ def health_payload() -> dict[str, Any]:
     return {
         "service": "ralleh-voice",
         "status": "ok",
-        "version": "0.2.1",
+        "version": "0.2.2",
         "env": cfg.env,
         "components": {
             "vad": cfg.adapter_vad,
@@ -66,13 +67,19 @@ def health_payload() -> dict[str, Any]:
 def readiness_payload() -> dict[str, Any]:
     cfg = load_settings()
     adapters = build_adapters(cfg)
-    readiness_by_component = {
-        component: {
+
+    readiness_by_component: dict[str, dict[str, Any]] = {}
+    for component, status in adapters.status.items():
+        selected = status.get("selected")
+        if component == "openclaw_bridge" and selected == "openclaw-gateway":
+            readiness_by_component[component] = _openclaw_bridge_readiness(cfg, status)
+            continue
+
+        readiness_by_component[component] = {
             **status,
-            "ready": status.get("selected") in {"deterministic", "stub"},
+            "ready": selected in {"deterministic", "stub"},
         }
-        for component, status in adapters.status.items()
-    }
+
     ready = all(component.get("ready") is True for component in readiness_by_component.values())
     return {
         "service": "ralleh-voice",
@@ -81,6 +88,35 @@ def readiness_payload() -> dict[str, Any]:
         "adapters": readiness_by_component,
         "note": "Readiness reports configured adapter readiness; real adapters may require optional deps/runtime model bootstrap.",
     }
+
+
+def _openclaw_bridge_readiness(cfg: Settings, status: dict[str, Any]) -> dict[str, Any]:
+    token_env_var = cfg.openclaw_gateway_token_env_var.strip()
+    has_token = bool(token_env_var and os.getenv(token_env_var, "").strip())
+
+    missing: list[str] = []
+    if not cfg.openclaw_gateway_url.strip():
+        missing.append("gateway_url")
+    if not cfg.openclaw_agent_target.strip():
+        missing.append("agent_target")
+    if not cfg.openclaw_gateway_allow_unauthenticated and not has_token:
+        missing.append("gateway_token")
+
+    ready = not missing
+
+    result = {
+        **status,
+        "ready": ready,
+        "configured": ready,
+        "token_ref": cfg.openclaw_token_ref,
+        "token_env_var": token_env_var,
+        "allow_unauthenticated": cfg.openclaw_gateway_allow_unauthenticated,
+        "agent_target": cfg.openclaw_agent_target,
+    }
+    if not ready:
+        result["missing"] = missing
+        result["note"] = "OpenClaw bridge requires URL, agent target, and token (unless unauthenticated mode is enabled)."
+    return result
 
 
 def _build_pipeline(cfg: Settings) -> VoicePipeline:
@@ -95,7 +131,7 @@ def _build_pipeline(cfg: Settings) -> VoicePipeline:
 
 def create_app():
     cfg = load_settings()
-    app = FastAPI(title="ralleh-voice", version="0.2.1")
+    app = FastAPI(title="ralleh-voice", version="0.2.2")
 
     if cfg.static_enabled:
         app.mount("/static", StaticFiles(directory="static", html=True), name="static")

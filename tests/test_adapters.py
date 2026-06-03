@@ -34,7 +34,7 @@ def test_adapter_factory_defaults_are_deterministic(monkeypatch):
             "faster_whisper",
         ),
         ("RALLEH_VOICE_ADAPTER_TTS", "kokoro", "tts", "MISSING_DEPENDENCY", "kokoro"),
-        ("RALLEH_VOICE_ADAPTER_BRIDGE", "openclaw-gateway", "openclaw_bridge", "MISSING_ENDPOINT", None),
+        ("RALLEH_VOICE_ADAPTER_BRIDGE", "openclaw-gateway", "openclaw_bridge", "CONFIG_ERROR", None),
     ],
 )
 def test_real_adapter_failures_are_structured(

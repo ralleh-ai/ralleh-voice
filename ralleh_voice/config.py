@@ -34,6 +34,10 @@ class Settings:
     static_enabled: bool = True
     openclaw_gateway_url: str = "http://127.0.0.1:18789"
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
+    openclaw_gateway_token_env_var: str = "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN"
+    openclaw_gateway_allow_unauthenticated: bool = False
+    openclaw_agent_target: str = "openclaw/default"
+    openclaw_session_key_prefix: str = "ralleh-voice"
     openclaw_gateway_timeout_ms: int = 10000
     kokoro_voice: str = "af_bella"
     audio_sample_rate: int = 16000
@@ -67,6 +71,17 @@ def load_settings() -> Settings:
         ),
         openclaw_token_ref=os.getenv(
             "RALLEH_VOICE_OPENCLAW_TOKEN_REF", "secret:openclaw_gateway_token"
+        ),
+        openclaw_gateway_token_env_var=os.getenv(
+            "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN_ENV_VAR",
+            "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN",
+        ),
+        openclaw_gateway_allow_unauthenticated=_env_bool(
+            "RALLEH_VOICE_OPENCLAW_GATEWAY_ALLOW_UNAUTHENTICATED", False
+        ),
+        openclaw_agent_target=os.getenv("RALLEH_VOICE_OPENCLAW_AGENT_TARGET", "openclaw/default"),
+        openclaw_session_key_prefix=os.getenv(
+            "RALLEH_VOICE_OPENCLAW_SESSION_KEY_PREFIX", "ralleh-voice"
         ),
         openclaw_gateway_timeout_ms=int(
             os.getenv("RALLEH_VOICE_OPENCLAW_GATEWAY_TIMEOUT_MS", "10000")

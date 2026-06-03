@@ -1,4 +1,4 @@
-# Operations runbook (Phase 1)
+# Operations runbook (Phase 3)
 
 ## Process model
 
@@ -10,6 +10,7 @@ Single API service:
 
 - `GET /v1/healthz` => liveness + selected adapter modes
 - `GET /v1/readyz` => process/config readiness + per-adapter readiness flags
+- In `openclaw-gateway` bridge mode, readiness is true only when bridge URL + agent target + token policy are satisfied.
 
 ## Logging
 
@@ -28,7 +29,7 @@ Recommended production posture:
 - unsupported inbound type => `session.error` (`UNSUPPORTED_EVENT`)
 - invalid/empty audio chunk => `session.error` (`BAD_AUDIO_CHUNK`)
 - end-turn without chunks => `session.error` (`EMPTY_TURN`)
-- adapter failure (missing dep/model/endpoint) => `session.error` (`ADAPTER_FAILURE`) with structured `meta`
+- adapter failure (missing dep/model/endpoint/auth/network/timeout/contract mismatch) => `session.error` (`ADAPTER_FAILURE`) with structured `meta`
 - cancel => `session.done` with `reason=cancelled`
 
 ## Practical SLO starter targets

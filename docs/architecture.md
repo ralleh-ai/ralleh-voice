@@ -16,7 +16,7 @@ It should be deployable either:
 4. On `audio.input.end`, gateway runs adapter-selected pipeline:
    - VAD adapter (deterministic default, optional silero)
    - STT adapter (deterministic default, optional faster-whisper)
-   - bridge adapter (deterministic default, openclaw-gateway skeleton)
+   - bridge adapter (deterministic default, openclaw-gateway via pinned /v1/chat/completions contract)
    - TTS adapter (deterministic default, optional kokoro)
 5. Gateway emits transcript/reply/audio-output events and `session.done`.
 
@@ -93,7 +93,7 @@ Implemented in Phase 2:
 
 Current limitations:
 - Silero/Faster-Whisper/Kokoro adapters are guarded boundaries and not full runtime audio implementations yet.
-- OpenClaw bridge remains strict skeleton until this repo pins stable endpoint contract details.
+- OpenClaw bridge contract is pinned to Gateway `POST /v1/chat/completions` (OpenAI-compatible response parsing with structured mismatch errors).
 
 ## Future phone transport
 

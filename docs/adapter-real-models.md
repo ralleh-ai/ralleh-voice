@@ -24,6 +24,6 @@ This installs heavy optional packages; CI should continue using `.[dev]` only.
 - Silero VAD adapter: lazy optional dependency check + structured failure; full model bootstrap still TODO.
 - Faster-Whisper STT adapter: lazy optional dependency/model init boundary; streaming transcription wiring still TODO.
 - Kokoro TTS adapter: lazy optional dependency boundary; runtime synthesis wiring still TODO.
-- OpenClaw bridge adapter: strict `MISSING_ENDPOINT` until stable endpoint contract is pinned.
+- OpenClaw bridge adapter: real local Gateway `/v1/chat/completions` integration with structured error mapping and token-safe failures.
 
 All failure paths return structured adapter errors surfaced to websocket clients as `session.error` with code `ADAPTER_FAILURE`.
