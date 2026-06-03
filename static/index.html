@@ -7,136 +7,246 @@
   <style>
     :root {
       color-scheme: light dark;
-      --bg: #0a1020;
-      --panel: #121a2d;
-      --panel-2: #0e1528;
-      --line: #31415f;
-      --ink: #e8edfa;
-      --ink-soft: #9eb0d7;
-      --accent: #5aa0ff;
-      --good: #4ccd84;
-      --warn: #ffb54f;
-      --bad: #ff6d6d;
-      --radius: 14px;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+      /* Neutral design tokens (branding intentionally deferred) */
+      --bg: #0b111b;
+      --surface: #111a28;
+      --surface-2: #0f1724;
+      --surface-3: #0d1420;
+      --line: #2a374b;
+      --line-strong: #36465e;
+      --text: #edf2ff;
+      --text-soft: #a8b5cc;
+      --text-muted: #8896ae;
+      --accent: #78a6ff;
+      --ok: #39c381;
+      --warn: #f5b24d;
+      --bad: #f07272;
+
+      --font-sans: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+      --fs-0: 0.76rem;
+      --fs-1: 0.84rem;
+      --fs-2: 0.92rem;
+      --fs-3: 1rem;
+      --fs-4: 1.15rem;
+      --fs-5: 1.34rem;
+
+      --lh-tight: 1.2;
+      --lh-base: 1.4;
+      --lh-relaxed: 1.55;
+
+      --s-1: 0.25rem;
+      --s-2: 0.5rem;
+      --s-3: 0.75rem;
+      --s-4: 1rem;
+      --s-5: 1.25rem;
+      --s-6: 1.5rem;
+      --s-7: 2rem;
+
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-pill: 999px;
+
+      --shadow-1: 0 1px 2px #0000003d;
+      --shadow-2: 0 12px 28px #00000030;
+
+      --max-w: 1520px;
     }
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg: #f4f7ff;
-        --panel: #ffffff;
-        --panel-2: #eef3ff;
-        --line: #ccd8ef;
-        --ink: #15213c;
-        --ink-soft: #536488;
-        --accent: #2c6ee8;
+        --bg: #f4f6fa;
+        --surface: #ffffff;
+        --surface-2: #f7f9fc;
+        --surface-3: #f2f5fa;
+        --line: #d4dbe8;
+        --line-strong: #bdc8db;
+        --text: #16253b;
+        --text-soft: #4c5f7e;
+        --text-muted: #6e7f9a;
+        --accent: #2f66d5;
+        --shadow-1: 0 1px 2px #1e24320f;
+        --shadow-2: 0 14px 30px #1e243217;
       }
     }
 
     * { box-sizing: border-box; }
 
+    html, body { height: 100%; }
+
     body {
       margin: 0;
-      background: radial-gradient(circle at top right, #1a2b4f44, transparent 35%), var(--bg);
-      color: var(--ink);
+      background: radial-gradient(circle at top right, #6d8fca2e, transparent 34%), var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: var(--fs-2);
+      line-height: var(--lh-base);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
-    .container {
-      max-width: 1220px;
+    button, input, select, textarea { font: inherit; color: inherit; }
+
+    .app {
+      max-width: var(--max-w);
       margin: 0 auto;
-      padding: 1rem;
+      min-height: 100%;
+      padding: var(--s-4);
       display: grid;
-      gap: 1rem;
+      gap: var(--s-4);
     }
 
-    .hero,
-    .panel {
+    .surface {
       border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: var(--radius);
-      box-shadow: 0 14px 36px #0000001f;
+      border-radius: var(--r-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow-2);
     }
 
-    .hero {
-      padding: 1rem 1.1rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem 1rem;
+    /* 1) Header / status strip */
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
+      gap: var(--s-4);
+      padding: var(--s-4) var(--s-5);
     }
 
-    .hero h1 {
+    .topbar h1 {
       margin: 0;
-      font-size: clamp(1.15rem, 2vw, 1.4rem);
-    }
-
-    .hero .sub {
-      color: var(--ink-soft);
-      font-size: 0.9rem;
-      margin-top: 0.3rem;
-    }
-
-    .hero-right {
-      text-align: right;
-      min-width: 200px;
-    }
-
-    .state-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.4rem 0.65rem;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-
-    .dot {
-      width: 0.52rem;
-      height: 0.52rem;
-      border-radius: 50%;
-      background: var(--ink-soft);
-    }
-
-    .dot.connected,
-    .dot.listening,
-    .dot.processing { background: var(--good); }
-    .dot.connecting { background: var(--warn); }
-    .dot.disconnected { background: var(--bad); }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1.08fr 1.25fr;
-      gap: 1rem;
-    }
-
-    .panel {
-      padding: 0.95rem;
-    }
-
-    .panel h2 {
-      margin: 0 0 0.75rem;
-      font-size: 0.98rem;
+      font-size: clamp(var(--fs-4), 1.5vw, var(--fs-5));
+      line-height: var(--lh-tight);
       letter-spacing: 0.01em;
     }
 
-    .controls {
-      display: grid;
-      gap: 0.8rem;
+    .subline {
+      margin: var(--s-2) 0 0;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      max-width: 76ch;
     }
 
-    .group {
+    .strip-meta {
       display: grid;
-      gap: 0.45rem;
+      justify-items: end;
+      gap: var(--s-2);
+      min-width: min(42vw, 380px);
     }
 
-    .group label,
-    .small-label {
-      color: var(--ink-soft);
-      font-size: 0.78rem;
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      max-width: 100%;
+      padding: 0.4rem 0.7rem;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 650;
+      font-size: var(--fs-1);
+    }
+
+    .dot {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: var(--text-muted);
+      box-shadow: 0 0 0 2px #0000001f inset;
+    }
+
+    .dot.connected, .dot.listening, .dot.processing { background: var(--ok); }
+    .dot.connecting { background: var(--warn); }
+    .dot.disconnected { background: var(--bad); }
+
+    .transport {
+      font-size: var(--fs-0);
+      color: var(--text-muted);
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* Main IA layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr) 360px;
+      gap: var(--s-4);
+      min-height: 0;
+      flex: 1;
+    }
+
+    .rail,
+    .stage {
+      min-height: 0;
+      display: grid;
+      gap: var(--s-4);
+      align-content: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: var(--surface-2);
+      box-shadow: var(--shadow-1);
+      min-height: 0;
+      display: grid;
+      gap: var(--s-3);
+      padding: var(--s-4);
+    }
+
+    .panel-head {
+      display: grid;
+      gap: var(--s-1);
+      margin-bottom: var(--s-1);
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0;
+      line-height: var(--lh-tight);
+      letter-spacing: 0.01em;
+    }
+
+    .panel h2 { font-size: var(--fs-3); }
+    .panel h3 { font-size: var(--fs-2); }
+
+    .panel-copy,
+    .hint {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      line-height: var(--lh-relaxed);
+    }
+
+    .field-grid {
+      display: grid;
+      gap: var(--s-3);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--s-3);
+    }
+
+    .field {
+      display: grid;
+      gap: 0.38rem;
+      min-width: 0;
+    }
+
+    label,
+    legend {
+      color: var(--text-soft);
+      font-size: var(--fs-0);
       letter-spacing: 0.01em;
     }
 
@@ -145,415 +255,717 @@
     input[type="password"],
     input[type="number"] {
       width: 100%;
-      border-radius: 10px;
+      min-width: 0;
+      padding: 0.58rem 0.65rem;
+      border-radius: var(--r-sm);
       border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--ink);
-      padding: 0.58rem 0.62rem;
-      font: inherit;
+      background: var(--surface-3);
+      color: var(--text);
+      outline: none;
+    }
+
+    select:focus,
+    input:focus,
+    button:focus-visible,
+    summary:focus-visible,
+    .mobile-tab:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px #6a9dff33;
+      outline: none;
     }
 
     input[type="range"] { width: 100%; }
 
-    .row {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.7rem;
+    .range-label {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--s-2);
     }
 
-    .stack {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.55rem;
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--s-2);
     }
 
     button {
-      border-radius: 10px;
+      border-radius: var(--r-sm);
       border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--ink);
-      padding: 0.58rem 0.82rem;
-      font-weight: 600;
+      background: var(--surface-3);
+      padding: 0.56rem 0.72rem;
+      font-weight: 620;
       cursor: pointer;
+      min-height: 2.3rem;
     }
 
     button.primary {
-      border-color: #478af7;
-      background: linear-gradient(180deg, #5ea3ff, #2d70e6);
+      border-color: #4a80dd;
+      background: linear-gradient(180deg, #5f95f2, #3b73d4);
       color: #fff;
     }
 
     button.warn {
-      border-color: #cf8d3b;
-      background: linear-gradient(180deg, #f0b35f, #cb842f);
-      color: #111;
+      border-color: #b57f37;
+      background: linear-gradient(180deg, #e8ae5a, #c8893a);
+      color: #19130a;
     }
 
     button:disabled {
+      opacity: 0.56;
       cursor: not-allowed;
-      opacity: 0.55;
     }
 
-    .hint {
-      color: var(--ink-soft);
-      margin: 0;
-      font-size: 0.8rem;
-      line-height: 1.35;
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      color: var(--text-soft);
+      font-size: var(--fs-1);
     }
 
-    .cards {
+    .mono {
+      font-family: var(--font-mono);
+      font-size: var(--fs-0);
+      letter-spacing: 0.01em;
+      min-width: 0;
+      word-break: break-all;
+    }
+
+    .truncate {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* Center stage */
+    .status-strip {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: var(--s-3);
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      padding: var(--s-3) var(--s-4);
+    }
+
+    .orb {
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 0.28rem #f26f6f24;
+    }
+
+    .orb.connected, .orb.listening, .orb.processing { background: var(--ok); box-shadow: 0 0 0 0.28rem #39c38130; }
+    .orb.connecting { background: var(--warn); box-shadow: 0 0 0 0.28rem #f4b14f2f; }
+
+    .status-main {
+      display: grid;
+      min-width: 0;
+      gap: 0.16rem;
+    }
+
+    .status-main strong {
+      font-size: var(--fs-2);
+      line-height: var(--lh-tight);
+    }
+
+    .status-main span {
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .caption {
+      text-align: right;
+      color: var(--text-muted);
+      font-size: var(--fs-0);
+      max-width: 28ch;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .metrics-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.62rem;
-      margin-bottom: 0.75rem;
+      gap: var(--s-3);
     }
 
-    .card {
+    .metric-card {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--panel-2);
-      padding: 0.65rem;
-      min-height: 90px;
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      padding: var(--s-3);
+      min-width: 0;
+      display: grid;
+      gap: var(--s-1);
     }
 
-    .card h3 {
-      margin: 0 0 0.35rem;
-      font-size: 0.78rem;
+    .metric-card h3 {
+      margin: 0;
+      font-size: var(--fs-0);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--ink-soft);
+      color: var(--text-muted);
     }
 
-    .metric {
-      font-weight: 700;
-      font-size: 1.03rem;
+    .metric-value {
+      font-size: var(--fs-3);
+      font-weight: 680;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
-    .tiny {
-      color: var(--ink-soft);
-      font-size: 0.77rem;
-      margin-top: 0.25rem;
-      line-height: 1.25;
+    .metric-sub {
+      color: var(--text-soft);
+      font-size: var(--fs-0);
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
-    .meter-wrap {
+    .meter {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #00000022;
-      padding: 0.58rem;
-      margin-bottom: 0.7rem;
+      border-radius: var(--r-md);
+      background: #0000001a;
+      padding: var(--s-3);
+      display: grid;
+      gap: var(--s-2);
     }
 
     .meter-canvas {
       width: 100%;
-      height: 72px;
+      height: 88px;
       display: block;
-      border-radius: 8px;
-      background: linear-gradient(180deg, #00000055, #00000018);
+      border-radius: var(--r-sm);
+      background: linear-gradient(180deg, #00000042, #00000010);
     }
 
     .meter-stats {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      gap: 0.6rem;
-      margin-top: 0.45rem;
-      font-size: 0.8rem;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
     }
 
     .clip {
       font-weight: 700;
-      color: var(--good);
+      color: var(--ok);
     }
 
     .clip.warn { color: var(--warn); }
     .clip.bad { color: var(--bad); }
 
+    .timeline-wrap {
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      padding: var(--s-3);
+      min-height: 0;
+      display: grid;
+      gap: var(--s-2);
+    }
+
+    .timeline-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--s-2);
+    }
+
     .timeline {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 0.65rem;
-      max-height: 380px;
+      border-radius: var(--r-sm);
+      background: #00000014;
+      padding: var(--s-2);
+      max-height: 440px;
       overflow: auto;
       display: grid;
-      gap: 0.45rem;
-      background: #00000014;
+      gap: var(--s-2);
+      overscroll-behavior: contain;
     }
 
     .entry {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 0.48rem 0.55rem;
-      background: var(--panel-2);
+      border-left-width: 4px;
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      padding: var(--s-2) var(--s-3);
+      min-width: 0;
+      display: grid;
+      gap: 0.2rem;
     }
 
-    .entry.user { border-left: 4px solid #43af7c; }
-    .entry.agent { border-left: 4px solid #548fff; }
-    .entry.system { border-left: 4px solid #b39ae4; }
-    .entry.error { border-left: 4px solid #f07070; }
-    .entry.partial { border-left: 4px solid #f5b25a; }
+    .entry.user { border-left-color: #4ab788; }
+    .entry.agent { border-left-color: #6c9efe; }
+    .entry.system { border-left-color: #a998e2; }
+    .entry.error { border-left-color: #eb7a7a; }
+    .entry.partial { border-left-color: #f4b35e; }
 
     .entry .head {
-      color: var(--ink-soft);
-      font-size: 0.74rem;
-      margin-bottom: 0.2rem;
+      color: var(--text-muted);
+      font-size: var(--fs-0);
       display: flex;
       justify-content: space-between;
-      gap: 0.4rem;
+      gap: var(--s-2);
+      min-width: 0;
     }
+
+    .entry .head > span { min-width: 0; }
 
     .entry .body {
       white-space: pre-wrap;
-      font-size: 0.9rem;
-      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: var(--lh-relaxed);
+      font-size: var(--fs-2);
     }
 
+    /* Right rail diagnostics */
     details {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 0.5rem 0.62rem;
-      background: var(--panel-2);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      padding: var(--s-2) var(--s-3);
     }
 
     summary {
       cursor: pointer;
-      font-weight: 600;
-      font-size: 0.86rem;
+      font-weight: 640;
+      font-size: var(--fs-1);
+      color: var(--text-soft);
     }
 
     pre {
-      margin: 0.6rem 0 0;
-      max-height: 240px;
-      overflow: auto;
-      background: #0000002b;
+      margin: var(--s-2) 0 0;
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 0.6rem;
-      font-size: 0.74rem;
-      line-height: 1.35;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      border-radius: var(--r-sm);
+      background: #0000002d;
+      padding: var(--s-3);
+      max-height: 250px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: var(--fs-0);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
 
-    .setup-grid {
+    .adv-grid {
       display: grid;
-      gap: 0.7rem;
-      margin-top: 0.65rem;
+      gap: var(--s-3);
+      margin-top: var(--s-2);
     }
 
-    .checkbox {
-      display: flex;
-      align-items: center;
-      gap: 0.44rem;
-      font-size: 0.84rem;
-      color: var(--ink-soft);
+    .adv-item {
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface-3);
+      padding: var(--s-2) var(--s-3);
+      display: grid;
+      gap: 0.2rem;
     }
 
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.76rem;
-      word-break: break-all;
+    .adv-key {
+      color: var(--text-muted);
+      font-size: var(--fs-0);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    @media (max-width: 1024px) {
-      .grid {
-        grid-template-columns: 1fr;
+    .adv-value {
+      font-family: var(--font-mono);
+      font-size: var(--fs-1);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .footer {
+      color: var(--text-muted);
+      font-size: var(--fs-0);
+      text-align: center;
+      padding: 0 var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom, 0));
+    }
+
+    /* Mobile: stacked layout with bottom tab controls */
+    .mobile-tabs {
+      display: none;
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      margin: 0 calc(var(--s-4) * -1) calc(var(--s-4) * -1);
+      border-top: 1px solid var(--line-strong);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      backdrop-filter: blur(8px);
+      padding: var(--s-2) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom, 0));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--s-2);
+    }
+
+    .mobile-tab {
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface-3);
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      font-weight: 620;
+      min-height: 2.35rem;
+      padding: 0.45rem;
+    }
+
+    .mobile-tab[aria-selected="true"] {
+      border-color: var(--accent);
+      color: var(--text);
+      background: color-mix(in srgb, var(--surface-3) 78%, var(--accent) 22%);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1240px) {
+      .layout {
+        grid-template-columns: 290px minmax(0, 1fr) 320px;
       }
     }
 
-    @media (max-width: 640px) {
-      .container { padding: 0.7rem; }
-      .row,
-      .cards {
+    @media (max-width: 980px) {
+      .app {
+        padding: var(--s-3);
+        gap: var(--s-3);
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+        align-items: start;
+        padding: var(--s-4);
+      }
+
+      .strip-meta {
+        justify-items: start;
+        min-width: 0;
+      }
+
+      .layout {
         grid-template-columns: 1fr;
       }
-      .hero-right { text-align: left; }
-      .stack button { flex: 1 1 calc(50% - 0.6rem); }
+
+      .layout > aside,
+      .layout > section {
+        display: none;
+      }
+
+      .layout > [data-panel].active-panel {
+        display: grid;
+      }
+
+      .mobile-tabs {
+        display: grid;
+      }
+
+      .timeline { max-height: 48vh; }
+    }
+
+    @media (max-width: 680px) {
+      .field-row,
+      .metrics-grid,
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .status-strip {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .caption {
+        grid-column: 1 / -1;
+        text-align: left;
+        max-width: none;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <section class="hero" aria-label="Control room header">
+  <main class="app" aria-label="Ralleh Voice control room">
+    <header class="topbar surface" aria-label="Header and transport status">
       <div>
-        <h1>Ralleh Voice · Control Room</h1>
-        <p class="sub">Agent-aware browser cockpit for mic streaming, turn visibility, and real-time tuning.</p>
+        <h1>Ralleh Voice · UX Control Room</h1>
+        <p class="subline">Structured operator cockpit for voice-session setup, live turn monitoring, and diagnostics.</p>
       </div>
-      <div class="hero-right">
-        <div class="state-badge"><span id="stateDot" class="dot disconnected"></span><span id="stateLabel">Disconnected</span></div>
-        <div class="sub" id="transportLabel">WS: /v1/ws/voice</div>
+      <div class="strip-meta">
+        <div class="state-pill" role="status" aria-live="polite">
+          <span id="stateDot" class="dot disconnected" aria-hidden="true"></span>
+          <span id="stateLabel" class="truncate">Disconnected</span>
+        </div>
+        <div class="transport mono" id="transportLabel" title="Transport endpoint">WS: /v1/ws/voice</div>
       </div>
-    </section>
+    </header>
 
-    <section class="grid">
-      <article class="panel" aria-label="Session configuration">
-        <h2>Voice Session Setup</h2>
+    <div class="layout" aria-label="Three-column control layout">
+      <!-- 2) Left rail: session setup -->
+      <aside class="rail" data-panel="setup" id="panel-setup" aria-label="Session setup and authentication">
+        <section class="panel" aria-labelledby="setup-heading">
+          <header class="panel-head">
+            <h2 id="setup-heading">Session setup</h2>
+            <p class="panel-copy">Configure agent target, voice profile, interaction mode, and responsiveness before connecting.</p>
+          </header>
 
-        <div class="controls">
-          <div class="row">
-            <div class="group">
-              <label for="agentTarget">Agent target</label>
-              <select id="agentTarget">
-                <option value="openclaw/default">Default Agent</option>
-                <option value="openclaw/ralleh">Ralleh</option>
-                <option value="openclaw/research">Research Assistant</option>
-                <option value="openclaw/support">Support Agent</option>
-                <option value="custom">Custom target…</option>
-              </select>
+          <form class="field-grid" onsubmit="return false" aria-label="Session configuration form">
+            <div class="field-row">
+              <div class="field">
+                <label for="agentTarget">Agent target</label>
+                <select id="agentTarget">
+                  <option value="openclaw/default">Default Agent</option>
+                  <option value="openclaw/ralleh">Ralleh</option>
+                  <option value="openclaw/research">Research Assistant</option>
+                  <option value="openclaw/support">Support Agent</option>
+                  <option value="custom">Custom target…</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="voiceProfile">Voice profile</label>
+                <select id="voiceProfile">
+                  <option value="neutral-clear">Neutral · Clear</option>
+                  <option value="warm-concise">Warm · Concise</option>
+                  <option value="energetic-fast">Energetic · Fast</option>
+                  <option value="deep-calm">Deep · Calm</option>
+                </select>
+              </div>
             </div>
-            <div class="group">
-              <label for="voiceProfile">Voice profile</label>
-              <select id="voiceProfile">
-                <option value="neutral-clear">Neutral · Clear</option>
-                <option value="warm-concise">Warm · Concise</option>
-                <option value="energetic-fast">Energetic · Fast</option>
-                <option value="deep-calm">Deep · Calm</option>
-              </select>
-            </div>
-          </div>
 
-          <div id="customAgentWrap" class="group" hidden>
-            <label for="customAgentTarget">Custom agent target</label>
-            <input id="customAgentTarget" type="text" placeholder="openclaw/your-agent" autocomplete="off" />
-          </div>
+            <div id="customAgentWrap" class="field" hidden>
+              <label for="customAgentTarget">Custom agent target</label>
+              <input id="customAgentTarget" type="text" placeholder="openclaw/your-agent" autocomplete="off" />
+            </div>
 
-          <div class="row">
-            <div class="group">
-              <label for="conversationMode">Conversation mode</label>
-              <select id="conversationMode">
-                <option value="command">Command</option>
-                <option value="balanced" selected>Balanced</option>
-                <option value="companion">Companion</option>
-                <option value="debug">Debug</option>
-              </select>
+            <div class="field-row">
+              <div class="field">
+                <label for="conversationMode">Conversation mode</label>
+                <select id="conversationMode">
+                  <option value="command">Command</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="companion">Companion</option>
+                  <option value="debug">Debug</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="performanceMode">Performance mode</label>
+                <select id="performanceMode">
+                  <option value="eco">Eco</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="low-latency">Low latency</option>
+                </select>
+              </div>
             </div>
-            <div class="group">
-              <label for="performanceMode">Performance mode</label>
-              <select id="performanceMode">
-                <option value="eco">Eco</option>
-                <option value="balanced" selected>Balanced</option>
-                <option value="low-latency">Low latency</option>
-              </select>
-            </div>
-          </div>
 
-          <div class="row">
-            <div class="group">
-              <label for="chunkProfile">Responsiveness tuning</label>
-              <select id="chunkProfile">
-                <option value="snappy">Snappy (120ms chunks)</option>
-                <option value="balanced" selected>Balanced (240ms chunks)</option>
-                <option value="steady">Steady (320ms chunks)</option>
-                <option value="custom">Custom</option>
-              </select>
+            <div class="field-row">
+              <div class="field">
+                <label for="chunkProfile">Responsiveness profile</label>
+                <select id="chunkProfile">
+                  <option value="snappy">Snappy (120ms chunks)</option>
+                  <option value="balanced" selected>Balanced (240ms chunks)</option>
+                  <option value="steady">Steady (320ms chunks)</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="chunkMs">Custom chunk duration (ms)</label>
+                <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" inputmode="numeric" />
+              </div>
             </div>
-            <div class="group">
-              <label for="bargeSensitivity">Barge-in sensitivity: <span id="bargeSensitivityValue">60</span>%</label>
+
+            <div class="field">
+              <label for="bargeSensitivity" class="range-label">
+                <span>Barge-in sensitivity</span>
+                <strong><span id="bargeSensitivityValue">60</span>%</strong>
+              </label>
               <input id="bargeSensitivity" type="range" min="0" max="100" step="1" value="60" />
             </div>
-          </div>
 
-          <div class="row">
-            <div class="group">
+            <div class="field">
               <label for="outputVolume">Output volume (future playback path)</label>
               <input id="outputVolume" type="range" min="0" max="100" step="1" value="100" />
-              <p class="hint">Output PCM playback is not wired yet; this setting is future-ready only.</p>
+              <p class="hint">Output PCM playback is not wired yet; this remains a client preference only.</p>
             </div>
-            <div class="group">
+
+            <div class="field">
+              <label for="authToken">Session token (in-memory only)</label>
+              <input id="authToken" type="password" placeholder="required only when WS auth is enabled" autocomplete="off" />
+            </div>
+
+            <div class="field-row" role="group" aria-label="Session behavior toggles">
+              <label class="checkline" for="autoReconnect">
+                <input id="autoReconnect" type="checkbox" checked />
+                Auto reconnect WebSocket
+              </label>
+              <label class="checkline" for="fadeOnCancel">
+                <input id="fadeOnCancel" type="checkbox" disabled />
+                Fade output on cancel (pending)
+              </label>
+            </div>
+
+            <div class="field">
               <label for="voicePreview">Voice preview</label>
               <button id="voicePreview" disabled aria-disabled="true">Preview voice (coming soon)</button>
-              <p class="hint">Voice profile is sent as session preference metadata for now.</p>
             </div>
+
+            <p class="hint">Token values are never persisted to localStorage; only non-secret UI preferences are saved.</p>
+          </form>
+        </section>
+      </aside>
+
+      <!-- 3) Center stage: live conversation area -->
+      <section class="stage" data-panel="live" id="panel-live" aria-label="Live conversation stage">
+        <article class="panel" aria-labelledby="live-heading">
+          <header class="panel-head">
+            <h2 id="live-heading">Live conversation</h2>
+            <p class="panel-copy">Primary controls, capture meter, live captions, and timeline of user/agent turns.</p>
+          </header>
+
+          <div class="status-strip" role="status" aria-live="polite">
+            <span id="stageOrb" class="orb disconnected" aria-hidden="true"></span>
+            <div class="status-main">
+              <strong id="stageState" class="truncate">Disconnected</strong>
+              <span id="stageSession" class="mono truncate">session: pending</span>
+            </div>
+            <span id="liveCaption" class="caption">Awaiting connection</span>
           </div>
 
-          <div class="stack">
+          <nav class="actions" aria-label="Primary controls">
             <button id="connectBtn" class="primary">Connect</button>
             <button id="disconnectBtn" disabled>Disconnect</button>
             <button id="startMicBtn" disabled class="primary">Start mic</button>
             <button id="stopMicBtn" disabled>Stop mic + send turn</button>
             <button id="cancelBtn" disabled class="warn">Cancel / barge-in</button>
             <button id="clearTimelineBtn">Clear timeline</button>
-          </div>
+          </nav>
 
-          <p class="hint">Honest boundary: server currently returns placeholder `audio.output.chunk` text, not playable synthesized audio yet.</p>
-        </div>
-      </article>
-
-      <article class="panel" aria-label="Live status and timeline">
-        <h2>Live Status</h2>
-
-        <div class="cards" role="status" aria-live="polite">
-          <div class="card">
-            <h3>Connection</h3>
-            <div class="metric" id="cardConnection">Disconnected</div>
-            <div class="tiny" id="cardReconnect">Auto reconnect enabled</div>
-          </div>
-          <div class="card">
-            <h3>Session</h3>
-            <div class="metric mono" id="cardSession">pending</div>
-            <div class="tiny" id="cardSessionMeta">No authenticated hello yet</div>
-          </div>
-          <div class="card">
-            <h3>Input Level</h3>
-            <div class="metric" id="cardInputLevel">-∞ dB</div>
-            <div class="tiny" id="cardClipStatus">No clipping detected</div>
-          </div>
-          <div class="card">
-            <h3>Turn Latency</h3>
-            <div class="metric" id="cardTurnLatency">n/a</div>
-            <div class="tiny" id="cardPerfMeta">First response n/a · reconnects 0</div>
-          </div>
-        </div>
-
-        <div class="meter-wrap">
-          <canvas id="meterCanvas" class="meter-canvas" width="620" height="72" aria-label="Microphone waveform and level meter"></canvas>
-          <div class="meter-stats">
-            <span>RMS: <strong id="rmsValue">0.000</strong></span>
-            <span>Peak: <strong id="peakValue">0.000</strong></span>
-            <span class="clip" id="clipBadge">Safe headroom</span>
-          </div>
-        </div>
-
-        <h2 style="margin-top:0.2rem;">Transcript & Reply Timeline</h2>
-        <div id="timeline" class="timeline" aria-live="polite" aria-label="Conversation timeline"></div>
-
-        <details style="margin-top:0.7rem;">
-          <summary>Setup & debug (auth, reconnect, protocol stream)</summary>
-          <div class="setup-grid">
-            <div class="row">
-              <label class="checkbox" for="autoReconnect">
-                <input id="autoReconnect" type="checkbox" checked />
-                Auto reconnect WebSocket
-              </label>
-              <label class="checkbox" for="fadeOnCancel">
-                <input id="fadeOnCancel" type="checkbox" disabled />
-                Fade output on cancel (pending playable output)
-              </label>
+          <section class="meter" aria-labelledby="meter-heading">
+            <h3 id="meter-heading">Mic input meter</h3>
+            <canvas id="meterCanvas" class="meter-canvas" width="860" height="88" aria-label="Microphone waveform and level meter"></canvas>
+            <div class="meter-stats">
+              <span>RMS: <strong id="rmsValue">0.000</strong></span>
+              <span>Peak: <strong id="peakValue">0.000</strong></span>
+              <span id="clipBadge" class="clip">Safe headroom</span>
             </div>
+          </section>
 
-            <div class="row">
-              <div class="group">
-                <label for="chunkMs">Custom chunk duration (ms)</label>
-                <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" inputmode="numeric" />
-              </div>
-              <div class="group">
-                <label for="authToken">Session token (never persisted)</label>
-                <input id="authToken" type="password" placeholder="required only when WS auth is enabled" autocomplete="off" />
-              </div>
-            </div>
+          <section class="timeline-wrap" aria-labelledby="timeline-heading">
+            <header class="timeline-head">
+              <h3 id="timeline-heading">Transcript & turn timeline</h3>
+              <span class="hint">Scrollable · newest entries pinned to bottom</span>
+            </header>
+            <div id="timeline" class="timeline" aria-live="polite" aria-label="Conversation timeline"></div>
+          </section>
 
-            <p class="hint">Token stays in-memory only and is never written to localStorage.</p>
+          <p class="hint">Current boundary: server may emit placeholder <code>audio.output.chunk</code> text instead of playable synthesis.</p>
+        </article>
+      </section>
+
+      <!-- 4) Right rail: diagnostics/tuning -->
+      <aside class="rail" data-panel="diagnostics" id="panel-diagnostics" aria-label="Diagnostics and advanced tuning">
+        <section class="panel" aria-labelledby="diag-heading">
+          <header class="panel-head">
+            <h2 id="diag-heading">Diagnostics & tuning</h2>
+            <p class="panel-copy">Latency, session continuity, transport health, and protocol-level event stream.</p>
+          </header>
+
+          <section class="metrics-grid" role="status" aria-live="polite" aria-label="Live system metrics">
+            <article class="metric-card">
+              <h3>Connection</h3>
+              <div id="cardConnection" class="metric-value">Disconnected</div>
+              <div id="cardReconnect" class="metric-sub">Auto reconnect enabled</div>
+            </article>
+            <article class="metric-card">
+              <h3>Session</h3>
+              <div id="cardSession" class="metric-value mono">pending</div>
+              <div id="cardSessionMeta" class="metric-sub">No authenticated hello yet</div>
+            </article>
+            <article class="metric-card">
+              <h3>Input level</h3>
+              <div id="cardInputLevel" class="metric-value">-∞ dB</div>
+              <div id="cardClipStatus" class="metric-sub">No clipping detected</div>
+            </article>
+            <article class="metric-card">
+              <h3>Turn latency</h3>
+              <div id="cardTurnLatency" class="metric-value">n/a</div>
+              <div id="cardPerfMeta" class="metric-sub">First response n/a · reconnects 0</div>
+            </article>
+          </section>
+
+          <details id="diagStream" open>
+            <summary>Protocol debug stream</summary>
             <pre id="debugLog" aria-label="Protocol event stream"></pre>
-          </div>
-        </details>
-      </article>
-    </section>
+          </details>
+
+          <details id="advVars">
+            <summary>Advanced variables (read-only summary)</summary>
+            <div class="adv-grid">
+              <article class="adv-item">
+                <div class="adv-key">Processing mode</div>
+                <div id="advProcessingMode" class="adv-value">unknown</div>
+              </article>
+              <article class="adv-item">
+                <div class="adv-key">Reconnect attempts</div>
+                <div id="advReconnectAttempts" class="adv-value">0</div>
+              </article>
+              <article class="adv-item">
+                <div class="adv-key">Audio chunks sent</div>
+                <div id="advChunksSent" class="adv-value">0</div>
+              </article>
+              <article class="adv-item">
+                <div class="adv-key">Bytes sent</div>
+                <div id="advBytesSent" class="adv-value">0 B</div>
+              </article>
+            </div>
+          </details>
+        </section>
+      </aside>
+    </div>
+
+    <!-- 5) Mobile stacked controls -->
+    <nav class="mobile-tabs" aria-label="Control sections">
+      <button class="mobile-tab" data-target="setup" aria-selected="false">Setup</button>
+      <button class="mobile-tab" data-target="live" aria-selected="true">Live</button>
+      <button class="mobile-tab" data-target="diagnostics" aria-selected="false">Diagnostics</button>
+    </nav>
+
+    <footer class="footer" aria-label="Control room footer">
+      Semantic control-room layout focused on information architecture, spacing rhythm, and operational clarity.
+    </footer>
   </main>
 
   <script>
     const wsPath = '/v1/ws/voice';
     const prefKey = 'ralleh.voice.control-room.v1';
+    const uiPrefKey = 'ralleh.voice.control-room.ui.v1';
 
     const stateLabel = document.getElementById('stateLabel');
     const stateDot = document.getElementById('stateDot');
+    const stageOrb = document.getElementById('stageOrb');
+    const stageState = document.getElementById('stageState');
+    const stageSession = document.getElementById('stageSession');
+    const liveCaption = document.getElementById('liveCaption');
 
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
@@ -595,6 +1007,18 @@
     const peakValueEl = document.getElementById('peakValue');
     const clipBadgeEl = document.getElementById('clipBadge');
 
+    const advProcessingModeEl = document.getElementById('advProcessingMode');
+    const advReconnectAttemptsEl = document.getElementById('advReconnectAttempts');
+    const advChunksSentEl = document.getElementById('advChunksSent');
+    const advBytesSentEl = document.getElementById('advBytesSent');
+
+    const mobileTabs = Array.from(document.querySelectorAll('.mobile-tab'));
+    const panelEls = {
+      setup: document.getElementById('panel-setup'),
+      live: document.getElementById('panel-live'),
+      diagnostics: document.getElementById('panel-diagnostics')
+    };
+
     let ws = null;
     let reconnectTimer = null;
     let reconnectAttempt = 0;
@@ -615,7 +1039,6 @@
     let totalBytesSent = 0;
     let currentSessionId = null;
     let previousSessionId = null;
-    let turnsCompleted = 0;
 
     let turnStats = {
       micStartedAt: 0,
@@ -635,6 +1058,13 @@
 
     function nowIsoClock() {
       return new Date().toISOString().slice(11, 19);
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes < 1) return '0 B';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
     function logDebug(prefix, payload) {
@@ -660,13 +1090,18 @@
 
       if (meta) {
         const metaEl = document.createElement('div');
-        metaEl.className = 'tiny';
+        metaEl.className = 'metric-sub';
         metaEl.textContent = meta;
         entry.appendChild(metaEl);
       }
 
       timelineEl.appendChild(entry);
       timelineEl.scrollTop = timelineEl.scrollHeight;
+
+      const preview = (body || '').replace(/\s+/g, ' ').trim();
+      if (preview) {
+        liveCaption.textContent = preview.length > 90 ? `${preview.slice(0, 87)}…` : preview;
+      }
     }
 
     function clearTimeline() {
@@ -685,8 +1120,14 @@
 
     function renderState() {
       const isConnected = ws && ws.readyState === WebSocket.OPEN;
-      stateLabel.textContent = getStateLabel(state);
+      const label = getStateLabel(state);
+
+      stateLabel.textContent = label;
       stateDot.className = `dot ${state}`;
+
+      stageState.textContent = label;
+      stageOrb.className = `orb ${state}`;
+      stageSession.textContent = `session: ${currentSessionId || 'pending'}`;
 
       connectBtn.disabled = isConnected || state === STATE.connecting;
       disconnectBtn.disabled = !isConnected;
@@ -694,8 +1135,9 @@
       stopMicBtn.disabled = state !== STATE.listening;
       cancelBtn.disabled = !isConnected;
 
-      cardConnectionEl.textContent = `${getStateLabel(state)}${isConnected ? ' · live' : ''}`;
+      cardConnectionEl.textContent = `${label}${isConnected ? ' · live' : ''}`;
       cardReconnectEl.textContent = `Auto reconnect ${autoReconnectEl.checked ? 'enabled' : 'disabled'} · attempts ${reconnectAttempt}`;
+      advReconnectAttemptsEl.textContent = String(reconnectAttempt);
     }
 
     function setState(next) {
@@ -729,9 +1171,27 @@
         chunkMs: Math.max(80, Math.min(1000, Number(chunkMsEl.value) || 240)),
         bargeSensitivity: Number(bargeSensitivityEl.value) || 60,
         outputVolume: Number(outputVolumeEl.value) || 100,
-        autoReconnect: !!autoReconnectEl.checked
+        autoReconnect: !!autoReconnectEl.checked,
+        activePanel: getActivePanel()
       };
       localStorage.setItem(prefKey, JSON.stringify(prefs));
+    }
+
+    function persistUiPrefs(partial = {}) {
+      try {
+        const base = JSON.parse(localStorage.getItem(uiPrefKey) || '{}');
+        localStorage.setItem(uiPrefKey, JSON.stringify({ ...base, ...partial }));
+      } catch {
+        localStorage.setItem(uiPrefKey, JSON.stringify(partial));
+      }
+    }
+
+    function loadUiPrefs() {
+      try {
+        return JSON.parse(localStorage.getItem(uiPrefKey) || '{}');
+      } catch {
+        return {};
+      }
     }
 
     function loadPrefs() {
@@ -750,6 +1210,7 @@
         if (typeof prefs.bargeSensitivity === 'number') bargeSensitivityEl.value = String(Math.round(prefs.bargeSensitivity));
         if (typeof prefs.outputVolume === 'number') outputVolumeEl.value = String(Math.round(prefs.outputVolume));
         if (typeof prefs.autoReconnect === 'boolean') autoReconnectEl.checked = prefs.autoReconnect;
+        if (typeof prefs.activePanel === 'string') activatePanel(prefs.activePanel, { persist: false });
       } catch (err) {
         logDebug('! local prefs parse failed', err?.message || String(err));
       }
@@ -778,7 +1239,8 @@
         currentSessionId = meta.session_id;
       }
 
-      cardSessionEl.textContent = currentSessionId ? currentSessionId : 'pending';
+      cardSessionEl.textContent = currentSessionId || 'pending';
+      stageSession.textContent = `session: ${currentSessionId || 'pending'}`;
 
       const continuity = previousSessionId && currentSessionId && previousSessionId !== currentSessionId
         ? 'reconnected with new session id'
@@ -787,6 +1249,7 @@
       const mode = meta.processing_mode ? `processing ${meta.processing_mode}` : 'processing mode unknown';
 
       cardSessionMetaEl.textContent = `${auth} · ${mode} · ${continuity}`;
+      advProcessingModeEl.textContent = meta.processing_mode || 'unknown';
     }
 
     function updatePerfCards() {
@@ -797,6 +1260,9 @@
 
       const kb = (totalBytesSent / 1024).toFixed(1);
       cardPerfMetaEl.textContent = `First response ${firstMs ? `${firstMs} ms` : 'n/a'} · chunks ${totalChunksSent} · ${kb} KB sent · reconnects ${reconnectCount}`;
+
+      advChunksSentEl.textContent = String(totalChunksSent);
+      advBytesSentEl.textContent = formatBytes(totalBytesSent);
     }
 
     function wsSend(type, payload = {}) {
@@ -825,6 +1291,7 @@
     function connectWs() {
       manuallyDisconnected = false;
       setState(STATE.connecting);
+      liveCaption.textContent = 'Connecting to transport…';
 
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}${wsPath}`);
@@ -851,7 +1318,7 @@
             fade_on_cancel_requested: !!fadeOnCancelEl.checked
           },
           client_meta: {
-            ui: 'control-room-v1',
+            ui: 'control-room-v2',
             user_agent: navigator.userAgent
           }
         };
@@ -910,7 +1377,6 @@
 
         if (type === 'session.done') {
           turnStats.doneAt = performance.now();
-          turnsCompleted += 1;
           addTimeline('system', `Turn finished: ${payload.reason || 'complete'}.`, payload.turn_id ? `turn ${payload.turn_id}` : '');
           if (state !== STATE.listening) setState(STATE.connected);
           updatePerfCards();
@@ -920,6 +1386,7 @@
       ws.onclose = () => {
         cleanupAudio(false);
         setState(STATE.disconnected);
+        liveCaption.textContent = 'Transport disconnected';
         addTimeline('system', 'Disconnected from server.');
         logDebug('x disconnected');
         queueReconnect();
@@ -960,7 +1427,7 @@
 
       meterCtx.beginPath();
       meterCtx.lineWidth = 1.6;
-      meterCtx.strokeStyle = '#63a2ff';
+      meterCtx.strokeStyle = '#74a6ff';
 
       let sum = 0;
       let peak = 0;
@@ -1060,6 +1527,7 @@
       drawMeter();
 
       setState(STATE.listening);
+      liveCaption.textContent = 'Listening for user speech…';
       addTimeline('system', 'Microphone started.', `chunk ${chunkMs}ms · mode ${conversationModeEl.value}/${performanceModeEl.value}`);
       persistPrefs();
     }
@@ -1117,7 +1585,32 @@
       turnStats.endSentAt = performance.now();
       wsSend('audio.input.end', {});
       setState(STATE.processing);
+      liveCaption.textContent = 'Processing turn…';
       addTimeline('system', 'Mic stopped. Sent audio.input.end.');
+    }
+
+    function getActivePanel() {
+      const active = Object.entries(panelEls).find(([, panel]) => panel.classList.contains('active-panel'));
+      return active ? active[0] : 'live';
+    }
+
+    function activatePanel(panelName, opts = {}) {
+      const { persist = true } = opts;
+      const target = panelEls[panelName] ? panelName : 'live';
+
+      Object.entries(panelEls).forEach(([name, panel]) => {
+        panel.classList.toggle('active-panel', name === target);
+      });
+
+      mobileTabs.forEach((btn) => {
+        const selected = btn.dataset.target === target;
+        btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+
+      if (persist) {
+        persistUiPrefs({ activePanel: target });
+        persistPrefs();
+      }
     }
 
     connectBtn.addEventListener('click', connectWs);
@@ -1128,6 +1621,7 @@
       if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'user_disconnect');
       clearTimeout(reconnectTimer);
       setState(STATE.disconnected);
+      liveCaption.textContent = 'Disconnected by operator';
       addTimeline('system', 'Manual disconnect.');
     });
 
@@ -1138,6 +1632,7 @@
       wsSend('session.cancel', { reason: 'barge-in' });
       cleanupAudio(false);
       setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
+      liveCaption.textContent = 'Cancel sent (barge-in)';
       addTimeline('system', 'Cancel sent (barge-in).');
     });
 
@@ -1164,10 +1659,18 @@
       persistPrefs();
     });
 
+    mobileTabs.forEach((btn) => {
+      btn.addEventListener('click', () => activatePanel(btn.dataset.target));
+    });
+
     loadPrefs();
     syncAgentTargetUI();
     syncBargeLabel();
     syncChunkProfileUI();
+
+    const uiPrefs = loadUiPrefs();
+    activatePanel(uiPrefs.activePanel || 'live', { persist: false });
+
     updateSessionCard({});
     updatePerfCards();
     renderState();
