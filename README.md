@@ -92,6 +92,8 @@ Real-model / voice stack dependencies:
 pip install -e .[voice]
 ```
 
+The default install already includes the `websockets` package because the bundled post-install smoke checker depends on it.
+
 Redis rate limiter dependency:
 
 ```bash
@@ -140,6 +142,7 @@ Useful flags:
 - `--auth-token <token>` — required when the deployed instance uses protected WebSocket auth modes
 
 This script is intended to be the first confidence check after installation on a fresh box.
+It is expected to work with the default install, without requiring a separate dev-only dependency step.
 
 ## Control Room overview
 

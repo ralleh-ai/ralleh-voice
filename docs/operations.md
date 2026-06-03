@@ -13,6 +13,7 @@ Single API service:
 - In `openclaw-gateway` bridge mode, readiness is true only when bridge URL + agent target + token policy are satisfied.
 - Post-install operator check: `python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099`
   - validates healthz, readyz, static Control Room, WebSocket hello path, and deterministic turn flow
+  - expected to work with the default install footprint; no extra dev-only smoke-check dependency step should be required
   - use `--hello-only` or `--allow-not-ready` when intentionally validating partial/incomplete real-adapter installs
 
 ## Logging
