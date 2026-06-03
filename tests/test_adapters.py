@@ -35,7 +35,6 @@ def test_adapter_factory_defaults_are_deterministic(monkeypatch):
             "MISSING_DEPENDENCY",
             "faster_whisper",
         ),
-        ("RALLEH_VOICE_ADAPTER_TTS", "kokoro", "tts", "MISSING_DEPENDENCY", "kokoro"),
         ("RALLEH_VOICE_ADAPTER_BRIDGE", "openclaw-gateway", "openclaw_bridge", "CONFIG_ERROR", None),
     ],
 )
@@ -302,9 +301,6 @@ def test_kokoro_tts_synthesizes_pcm(monkeypatch):
     monkeypatch.setenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "pcm_s16le")
     monkeypatch.setenv("RALLEH_VOICE_KOKORO_LANG_CODE", "a")
 
-    cfg = load_settings()
-    bundle = build_adapters(cfg)
-
     class FakeAudio:
         def tolist(self):
             return [0.0, 0.5, -0.5, 1.0]
@@ -314,10 +310,13 @@ def test_kokoro_tts_synthesizes_pcm(monkeypatch):
             assert lang_code == "a"
         def __call__(self, text, voice):
             assert text == "hello world"
-            assert voice == cfg.kokoro_voice
+            assert voice == "af_bella"
             return iter([("gs", "ps", FakeAudio())])
 
     monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=FakePipeline))
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
 
     out = asyncio.run(_collect(bundle.tts.synthesize_stream(" hello   world ")))
     assert len(out) == 1
@@ -352,6 +351,7 @@ def test_silero_rejects_odd_length_pcm(monkeypatch):
 def test_kokoro_tts_rejects_unsupported_output_format(monkeypatch):
     monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
     monkeypatch.setenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "wav")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_ALLOW_FALLBACK", "false")
     monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=lambda lang_code: object()))
 
     cfg = load_settings()
@@ -363,6 +363,37 @@ def test_kokoro_tts_rejects_unsupported_output_format(monkeypatch):
     payload = exc.value.to_payload()
     assert payload["code"] == "CONFIG_ERROR"
     assert payload["component"] == "tts"
+
+
+def test_kokoro_strict_mode_keeps_real_adapter_when_probe_fails(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_ALLOW_FALLBACK", "false")
+    monkeypatch.setitem(sys.modules, "kokoro", None)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    assert bundle.status["tts"]["selected"] == "kokoro"
+    assert bundle.status["tts"]["degraded"] is True
+    assert bundle.status["tts"]["active"] == "kokoro-strict"
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(_consume(bundle.tts.synthesize_stream("hello")))
+    assert exc.value.to_payload()["code"] == "MISSING_DEPENDENCY"
+
+
+def test_kokoro_falls_back_to_deterministic_when_probe_fails(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_ALLOW_FALLBACK", "true")
+    monkeypatch.setitem(sys.modules, "kokoro", None)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    assert bundle.status["tts"]["selected"] == "kokoro"
+    assert bundle.status["tts"]["degraded"] is True
+    assert bundle.status["tts"]["active"] == "deterministic-fallback"
+    out = asyncio.run(_collect(bundle.tts.synthesize_stream("hello")))
+    assert len(out) == 1
 
 
 async def _collect(stream):

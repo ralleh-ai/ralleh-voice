@@ -16,6 +16,14 @@ class KokoroTTSAdapter:
     lang_code: str = "a"
     _engine: object | None = field(default=None, init=False, repr=False)
 
+    @property
+    def event_encoding(self) -> str:
+        return f"base64-{self.output_format}"
+
+    @property
+    def event_sample_rate(self) -> int:
+        return self.sample_rate
+
     def _ensure_engine(self):
         if self._engine is not None:
             return self._engine
@@ -61,6 +69,9 @@ class KokoroTTSAdapter:
             ) from exc
 
         return self._engine
+
+    def probe(self) -> None:
+        self._ensure_engine()
 
     async def synthesize_stream(self, text: str) -> AsyncIterator[bytes]:
         prompt = " ".join(text.split()).strip()

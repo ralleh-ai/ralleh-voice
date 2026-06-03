@@ -33,6 +33,9 @@ class DeterministicOpenClawBridge:
 class DeterministicTTS:
     """Local TTS stub: emits base64 payload as encoded placeholder chunk."""
 
+    event_encoding = "base64-text-placeholder"
+    event_sample_rate = None
+
     async def synthesize_stream(self, text: str) -> AsyncIterator[bytes]:
         encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
         yield encoded.encode("utf-8")

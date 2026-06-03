@@ -31,7 +31,7 @@ def build_adapters(cfg: Settings) -> AdapterBundle:
     vad = _build_vad(cfg)
     stt = _build_stt(cfg)
     bridge = _build_bridge(cfg)
-    tts = _build_tts(cfg)
+    tts, tts_status = _build_tts(cfg)
     return AdapterBundle(
         vad=vad,
         stt=stt,
@@ -41,7 +41,7 @@ def build_adapters(cfg: Settings) -> AdapterBundle:
             "vad": _status_for("vad", cfg.adapter_vad),
             "stt": _status_for("stt", cfg.adapter_stt),
             "openclaw_bridge": _status_for("openclaw_bridge", cfg.adapter_bridge),
-            "tts": _status_for("tts", cfg.adapter_tts),
+            "tts": tts_status,
         },
     )
 
@@ -102,15 +102,49 @@ def _build_bridge(cfg: Settings) -> OpenClawBridge:
     raise ValueError(f"Unsupported bridge adapter: {cfg.adapter_bridge}")
 
 
-def _build_tts(cfg: Settings) -> TTSAdapter:
+def _build_tts(cfg: Settings) -> tuple[TTSAdapter, dict[str, Any]]:
     if cfg.adapter_tts in {"deterministic", "stub"}:
-        return DeterministicTTS()
+        return DeterministicTTS(), _status_for("tts", cfg.adapter_tts)
     if cfg.adapter_tts == "kokoro":
-        return KokoroTTSAdapter(
+        adapter = KokoroTTSAdapter(
             model_ref=cfg.kokoro_model_ref,
             voice=cfg.kokoro_voice,
             sample_rate=cfg.kokoro_sample_rate,
             output_format=cfg.kokoro_output_format,
             lang_code=cfg.kokoro_lang_code,
         )
+        try:
+            adapter.probe()
+        except Exception as exc:
+            payload = exc.to_payload() if hasattr(exc, "to_payload") else {
+                "code": "MODEL_INIT_FAILED",
+                "detail": str(exc),
+                "component": "tts",
+            }
+            status = {
+                "component": "tts",
+                "selected": "kokoro",
+                "ready": False,
+                "mode": "real-optional",
+                "degraded": True,
+                "allow_fallback": cfg.kokoro_allow_fallback,
+                "note": "Kokoro runtime probe failed.",
+                "error": payload,
+            }
+            if cfg.kokoro_allow_fallback:
+                status["active"] = "deterministic-fallback"
+                status["note"] = "Kokoro runtime probe failed; deterministic TTS fallback is active."
+                return DeterministicTTS(), status
+            status["active"] = "kokoro-strict"
+            return adapter, status
+
+        return adapter, {
+            "component": "tts",
+            "selected": "kokoro",
+            "active": "kokoro",
+            "ready": True,
+            "mode": "real-optional",
+            "note": "Kokoro runtime probe passed.",
+            "allow_fallback": cfg.kokoro_allow_fallback,
+        }
     raise ValueError(f"Unsupported TTS adapter: {cfg.adapter_tts}")

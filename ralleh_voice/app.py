@@ -230,18 +230,19 @@ def create_app():
         async def emit_turn_output(turn: TurnState, result: TurnOutput) -> None:
             await send_event(EVENT_TRANSCRIPT_FINAL, {"turn_id": turn.turn_id, "text": result.transcript})
             await send_event(EVENT_AGENT_REPLY, {"turn_id": turn.turn_id, "text": result.reply})
+            tts_encoding = getattr(pipeline.tts, "event_encoding", "base64-text-placeholder")
+            tts_sample_rate = getattr(pipeline.tts, "event_sample_rate", None)
             for idx, out in enumerate(result.audio_chunks):
-                if cfg.adapter_tts == "kokoro":
-                    await send_event(
-                        EVENT_AUDIO_OUT_CHUNK,
-                        {
-                            "turn_id": turn.turn_id,
-                            "index": idx,
-                            "encoding": f"base64-{cfg.kokoro_output_format}",
-                            "sample_rate": cfg.kokoro_sample_rate,
-                            "chunk": base64.b64encode(out).decode("ascii"),
-                        },
-                    )
+                if tts_encoding != "base64-text-placeholder":
+                    payload = {
+                        "turn_id": turn.turn_id,
+                        "index": idx,
+                        "encoding": tts_encoding,
+                        "chunk": base64.b64encode(out).decode("ascii"),
+                    }
+                    if tts_sample_rate is not None:
+                        payload["sample_rate"] = tts_sample_rate
+                    await send_event(EVENT_AUDIO_OUT_CHUNK, payload)
                     continue
 
                 await send_event(

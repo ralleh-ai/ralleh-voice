@@ -1,34 +1,55 @@
 # ralleh-voice
 
-A browser-first voice gateway for the Ralleh stack.
+A self-hosted, browser-first voice gateway for the Ralleh / OpenClaw stack.
 
-`ralleh-voice` provides a self-hosted voice session path between a browser client and the Ralleh / OpenClaw agent layer. The current focus is a clean WebSocket contract, a professional browser Control Room, deterministic defaults for testability, and clear boundaries for future real-model voice integration.
+`ralleh-voice` provides the session layer between a browser operator UI and an agent runtime. It is built around a clean WebSocket contract, a production-minded Control Room, deterministic defaults for testability, and an adapter model that lets real VAD, STT, bridge, and TTS components be introduced without turning the service into a guessing game.
+
+The design goal is simple:
+- make browser voice sessions easy to reason about
+- make deployment straightforward on a Linux VPS
+- make real-model integration possible without sacrificing service safety
+- make the repository honest, educational, and verifiable
+
+## Who this repo is for
+
+This repository is for engineers who want to run a self-hosted voice path with:
+- browser microphone input
+- structured WebSocket session events
+- an agent bridge through OpenClaw Gateway
+- optional real adapters for VAD, STT, and TTS
+- explicit operational posture for Caddy, systemd, and fresh-box deployment checks
+
+It is especially useful if you care about two things at once:
+1. a clean developer/operator experience
+2. honest boundaries around what is proven versus what is still in progress
 
 ## What this repo is
 
 This repo contains:
-- a FastAPI application with a voice WebSocket endpoint
+- a FastAPI application with HTTP health/readiness endpoints and a voice WebSocket endpoint
 - a browser Control Room for operating and observing sessions
 - a pluggable adapter pipeline for VAD, STT, bridge, and TTS
-- auth, rate limiting, and streaming/session guardrails
+- auth, rate limiting, session safety, and streaming-mode guardrails
 - deployment artifacts for Caddy, systemd, Docker, and Compose
-- repo docs intended to meet a production-grade baseline
+- repo documentation intended to meet a production-grade baseline
 
 ## What this repo is not
 
 This repo is **not** currently:
 - a PSTN/SIP telephony product
-- a fully wired real-model STT/TTS runtime out of the box
-- a high-availability distributed media system
+- a general-purpose media server
 - a compliance/retention platform
+- a claim that every optional model stack works on every host/runtime combination out of the box
 
 Those may come later, but they are not the current claim.
 
 ## Current status
 
-The project is a **strong foundation** for a self-hosted browser-first voice system.
+The project is a **real, usable foundation** for a self-hosted browser-first voice system.
 
-Implemented today:
+### Proven today
+
+Repository and deployment work now supports:
 - browser microphone capture and chunked PCM upload over WebSocket
 - structured client/server event contract
 - deterministic test-safe adapters by default
@@ -37,13 +58,26 @@ Implemented today:
 - in-memory and optional Redis rate limiting
 - buffered and early-start streaming turn modes
 - browser Control Room with session setup, live state, timeline, and diagnostics
-- repo standards: tests, docs, security notes, deployment artifacts, changelog, contributing guide
+- bundled smoke-check path for installed deployments
 
-Not fully complete yet:
-- real Silero / Faster-Whisper / Kokoro end-to-end runtime proof
-- true full-duplex streaming voice path
-- actual speaker playback for `audio.output.chunk`
-- production hardening and performance validation on fresh deployments
+Host-level proof now exists for:
+- install + systemd + Caddy-first service path on `srv1391721`
+- real OpenClaw bridge
+- real Faster-Whisper STT
+- real Silero VAD
+- full websocket turn lifecycle with real upstream reply
+
+### Important truth
+
+The service is farther along than a prototype, but it is not yet claiming final production perfection.
+
+### Not fully complete yet
+
+Remaining major work includes:
+- real Kokoro host synthesis proof on the deployment target
+- true speaker playback pipeline instead of placeholder fallback output when deterministic TTS is active
+- true full-duplex streaming conversation behavior
+- deeper production hardening, load testing, and long-run operational validation
 
 ## Architecture at a glance
 
@@ -411,7 +445,7 @@ Supported / planned adapter values:
 ### Current real-adapter status
 - `silero`: runtime wiring is implemented for CPU-first chunk detection via `silero-vad`; host proof still depends on Torch/Silero runtime availability on the deployment target
 - `faster-whisper`: lazy dependency/model init boundary in place; full streaming transcription wiring still pending
-- `kokoro`: runtime synthesis wiring is implemented for `pcm_s16le` output; host proof still depends on Kokoro package/runtime availability on the deployment target. On Python 3.13 hosts, use the relaxed `kokoro>=0.7.16,<1.0` packaging range rather than assuming only `0.9.x` is viable.
+- `kokoro`: runtime synthesis wiring is implemented for `pcm_s16le` output. Golden-standard safety behavior now applies: when `RALLEH_VOICE_ADAPTER_TTS=kokoro`, the service probes Kokoro at startup/readiness time; if the runtime is unavailable and `RALLEH_VOICE_KOKORO_ALLOW_FALLBACK=true` (default), deterministic TTS fallback stays active instead of breaking the service. Strict mode is still available by setting `RALLEH_VOICE_KOKORO_ALLOW_FALLBACK=false`.
 - `openclaw-gateway`: real HTTP integration implemented
 
 ## OpenClaw bridge

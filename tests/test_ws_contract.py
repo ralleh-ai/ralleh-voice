@@ -224,6 +224,27 @@ def test_ws_kokoro_emits_base64_pcm_chunk(monkeypatch):
         assert base64.b64decode(audio["payload"]["chunk"])
 
 
+def test_ws_kokoro_fallback_uses_placeholder_chunk(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "off")
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_ALLOW_FALLBACK", "true")
+    monkeypatch.setitem(sys.modules, "kokoro", None)
+
+    app = app_module.create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        ws.send_json({"type": "audio.input.end", "payload": {}})
+
+        events = [ws.receive_json() for _ in range(4)]
+        audio = events[2]
+        assert audio["type"] == "audio.output.chunk"
+        assert audio["payload"]["encoding"] == "base64-text-placeholder"
+
+
 def test_ws_auth_enabled_missing_token_blocks_audio(monkeypatch):
     monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "shared-secret")
     monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_TOKEN", "dummy-secret")

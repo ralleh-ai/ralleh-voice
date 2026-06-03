@@ -1,3 +1,5 @@
+import sys
+
 from ralleh_voice.app import health_payload, readiness_payload
 
 
@@ -29,6 +31,18 @@ def test_readiness_payload_reflects_silero_not_ready_without_runtime_probe(monke
     assert payload["ready"] is False
     assert payload["adapters"]["vad"]["selected"] == "silero"
     assert payload["adapters"]["vad"]["ready"] is False
+
+
+def test_readiness_payload_shows_kokoro_fallback(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_ALLOW_FALLBACK", "true")
+    monkeypatch.setitem(sys.modules, "kokoro", None)
+    payload = readiness_payload()
+    assert payload["ready"] is False
+    tts = payload["adapters"]["tts"]
+    assert tts["selected"] == "kokoro"
+    assert tts["degraded"] is True
+    assert tts["active"] == "deterministic-fallback"
 
 
 def test_readiness_payload_openclaw_bridge_requires_token(monkeypatch):

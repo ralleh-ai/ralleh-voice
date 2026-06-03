@@ -60,7 +60,8 @@ Service-management verification now proven in rehearsal:
 ## Known MVP limitations
 
 - deterministic adapters by default (real adapter modes are optional and may report not-ready)
-- output "audio" is placeholder base64 text chunk, not playable PCM stream
+- if Kokoro TTS is selected but runtime probing fails, deterministic fallback can remain active when `RALLEH_VOICE_KOKORO_ALLOW_FALLBACK=true` (default); readiness will report the degraded/fallback state explicitly
+- output "audio" is placeholder base64 text chunk unless a real TTS adapter is active and healthy
 - shared-secret mode is static bootstrap; signed-token mode is short-lived but key rotation flow is still manual
 - redis limiter uses fixed-window counters (not full burst-friendly token-bucket shaping)
 - streaming mode lowers buffering/start latency but is not full-duplex model-level realtime streaming yet

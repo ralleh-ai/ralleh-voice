@@ -282,7 +282,7 @@ Use this wording unless the facts materially improve:
 
 - `ralleh-voice` is install-proven for the deterministic/systemd/Caddy-first deployment path on `srv1391721`.
 - The real OpenClaw bridge can be rehearsed next.
-- Full real-adapter rehearsal is no longer blocked on repo wiring: Faster-Whisper host proof passed, Kokoro runtime synthesis is wired in-repo for `pcm_s16le` websocket output, and Silero runtime wiring is now implemented on a CPU-first path. Remaining blockers are host-level proof for Kokoro/Silero on the deployment target plus matching the Kokoro package range to the host Python version (Python 3.13 requires the relaxed `kokoro>=0.7.16,<1.0` range).
+- Full real-adapter rehearsal is no longer blocked on repo wiring: Faster-Whisper host proof passed, Kokoro runtime synthesis is wired in-repo for `pcm_s16le` websocket output, and Silero runtime wiring is now implemented on a CPU-first path. Golden-standard Kokoro safety now applies too: Kokoro is startup-probed and can fall back to deterministic TTS by default when unavailable, so selecting Kokoro does not need to break service health. Remaining blocker is host-level proof of real Kokoro synthesis on the deployment target.
 
 ---
 
