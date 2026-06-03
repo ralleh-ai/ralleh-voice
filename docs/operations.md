@@ -22,6 +22,37 @@ Single API service:
 
 Current baseline: stdout logs + WebSocket event-level errors.
 
+## Install and rehearsal lessons (do not repeat these)
+
+These were discovered during real host rehearsals on `srv1391721` and should be treated as operator rules, not suggestions.
+
+- **Use the app virtualenv for smoke checks.**
+  - Correct pattern: `/opt/ralleh/ralleh-voice/.venv/bin/python3 /opt/ralleh/ralleh-voice/scripts/smoke_check.py ...`
+  - Do not assume system `python3` has the packaged dependencies.
+
+- **Treat `/opt/ralleh/ralleh-voice` as a deployed app tree, not a git checkout.**
+  - Update flows should sync/copy source into place, then reinstall.
+  - Do not tell operators to `git pull` inside `APP_ROOT` unless the deployment method explicitly created a repo there.
+
+- **Sync the latest source tree before using new extras or editable installs.**
+  - If `pyproject.toml` changed, the installed tree may not know about new extras yet.
+  - Copy source first, then run `pip install -e .[...]` from the deployed tree.
+
+- **Do not assume `rsync` is installed on fresh VPS targets.**
+  - Prefer base-system-safe copy methods (`tar | tar`, shell, python) or declare `rsync` as an explicit prerequisite.
+
+- **For staged real-adapter proofs, smoke-check in partial mode first.**
+  - Use `--allow-not-ready` and/or `--hello-only` when validating staged runtime prep.
+  - Then run a separate websocket proof for the actual audio-turn evidence.
+
+- **Use a short known-good speech fixture for STT/VAD proofs.**
+  - Do not start with long media files, arbitrary offsets, or ambient tracks.
+  - A short clip with confirmed speech dramatically shortens diagnosis time.
+
+- **Do not treat Kokoro as install-safe on Python 3.13 unless it has been explicitly re-proven on that target.**
+  - Safe default: rely on the startup probe and deterministic fallback behavior.
+  - Strict Kokoro mode should be an intentional decision, not the default assumption.
+
 Recommended production posture:
 - run behind Caddy,
 - terminate TLS at edge,
