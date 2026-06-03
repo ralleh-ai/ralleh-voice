@@ -4,19 +4,21 @@ Browser-first voice gateway MVP for the Ralleh stack.
 
 ## Status
 
-**Phase 1 MVP (implemented):**
+**Phase 2 wiring (implemented):**
 - Browser/mobile mic capture using Web Audio ScriptProcessor fallback
 - PCM16 mono chunking -> base64 -> WebSocket events
 - Inbound event handling for `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
 - Outbound events for `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
 - Structured malformed JSON / bad event errors (no process crash)
 - Turn cancellation foundation with per-turn cancellation state
-- Deterministic local adapters for VAD/STT/bridge/TTS so tests run without model downloads
+- Adapter factory + explicit modules for VAD/STT/bridge/TTS
+- Deterministic adapters remain default so tests run without model downloads
+- Optional real adapters use lazy imports and fail with structured actionable errors
 
 **Not production telephony:**
 - no PSTN/SIP/telephony ingress in this phase
 - no authn/authz yet
-- no real model-backed STT/TTS wired by default
+- no real model-backed STT/TTS fully implemented yet (boundaries are wired, runtime integration is partial)
 
 ## Architecture
 
@@ -61,13 +63,25 @@ python3 -m compileall ralleh_voice tests
 
 Environment variable based (`.env.example`, `ralleh_voice/config.py`).
 
-Adapter mode hooks are present but currently deterministic by default:
+Adapter mode selection (deterministic defaults are CI-safe):
 - `RALLEH_VOICE_ADAPTER_VAD=deterministic|stub|silero`
 - `RALLEH_VOICE_ADAPTER_STT=deterministic|stub|faster-whisper`
 - `RALLEH_VOICE_ADAPTER_TTS=deterministic|stub|kokoro`
 - `RALLEH_VOICE_ADAPTER_BRIDGE=deterministic|stub|openclaw-gateway`
 
-Real adapter integrations are TODOs documented at boundaries in code/docs.
+Optional heavy dependencies:
+
+```bash
+pip install -e .[voice]
+```
+
+Current real-adapter status:
+- `silero` VAD: lazy optional dependency boundary + structured failure; full model bootstrap pending.
+- `faster-whisper` STT: lazy optional dependency/model init boundary; streaming transcription wiring pending.
+- `kokoro` TTS: lazy optional dependency boundary; synthesis wiring pending.
+- `openclaw-gateway` bridge: strict skeleton with `MISSING_ENDPOINT` until stable endpoint contract is pinned.
+
+When a selected adapter fails at runtime, WS returns `session.error` with code `ADAPTER_FAILURE` and structured metadata.
 
 ## Deployment posture
 
@@ -93,8 +107,8 @@ Current repo policy:
 ## Roadmap (next slices)
 
 1. AudioWorklet path + jitter buffering + playback improvements
-2. Real Silero/Faster-Whisper/Kokoro adapter wiring behind optional deps
-3. OpenClaw bridge session cancellation propagation
+2. Complete Silero/Faster-Whisper/Kokoro runtime audio wiring (beyond boundary/skeleton)
+3. Pin and implement stable OpenClaw bridge endpoint contract + cancellation propagation
 4. Authenticated WS sessions + rate limits
 5. Telephony transport adapters (separate phase, explicit non-goal here)
 

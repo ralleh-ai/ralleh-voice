@@ -34,6 +34,7 @@ class Settings:
     static_enabled: bool = True
     openclaw_gateway_url: str = "http://127.0.0.1:18789"
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
+    openclaw_gateway_timeout_ms: int = 10000
     kokoro_voice: str = "af_bella"
     audio_sample_rate: int = 16000
     adapter_vad: str = "deterministic"
@@ -41,8 +42,16 @@ class Settings:
     adapter_tts: str = "deterministic"
     adapter_bridge: str = "deterministic"
     faster_whisper_model_ref: str = "model:faster-whisper-tiny"
+    faster_whisper_device: str = "cpu"
+    faster_whisper_compute_type: str = "int8"
     silero_model_ref: str = "model:silero-vad"
+    silero_sample_rate: int = 16000
+    silero_threshold: float = 0.5
+    silero_min_speech_ms: int = 250
+    silero_min_silence_ms: int = 150
     kokoro_model_ref: str = "model:kokoro"
+    kokoro_sample_rate: int = 24000
+    kokoro_output_format: str = "pcm_s16le"
 
 
 def load_settings() -> Settings:
@@ -59,6 +68,9 @@ def load_settings() -> Settings:
         openclaw_token_ref=os.getenv(
             "RALLEH_VOICE_OPENCLAW_TOKEN_REF", "secret:openclaw_gateway_token"
         ),
+        openclaw_gateway_timeout_ms=int(
+            os.getenv("RALLEH_VOICE_OPENCLAW_GATEWAY_TIMEOUT_MS", "10000")
+        ),
         kokoro_voice=os.getenv("RALLEH_VOICE_KOKORO_VOICE", "af_bella"),
         audio_sample_rate=int(os.getenv("RALLEH_VOICE_AUDIO_SAMPLE_RATE", "16000")),
         adapter_vad=_env_choice("RALLEH_VOICE_ADAPTER_VAD", "deterministic", _ALLOWED_VAD),
@@ -70,6 +82,16 @@ def load_settings() -> Settings:
         faster_whisper_model_ref=os.getenv(
             "RALLEH_VOICE_FASTER_WHISPER_MODEL_REF", "model:faster-whisper-tiny"
         ),
+        faster_whisper_device=os.getenv("RALLEH_VOICE_FASTER_WHISPER_DEVICE", "cpu"),
+        faster_whisper_compute_type=os.getenv(
+            "RALLEH_VOICE_FASTER_WHISPER_COMPUTE_TYPE", "int8"
+        ),
         silero_model_ref=os.getenv("RALLEH_VOICE_SILERO_MODEL_REF", "model:silero-vad"),
+        silero_sample_rate=int(os.getenv("RALLEH_VOICE_SILERO_SAMPLE_RATE", "16000")),
+        silero_threshold=float(os.getenv("RALLEH_VOICE_SILERO_THRESHOLD", "0.5")),
+        silero_min_speech_ms=int(os.getenv("RALLEH_VOICE_SILERO_MIN_SPEECH_MS", "250")),
+        silero_min_silence_ms=int(os.getenv("RALLEH_VOICE_SILERO_MIN_SILENCE_MS", "150")),
         kokoro_model_ref=os.getenv("RALLEH_VOICE_KOKORO_MODEL_REF", "model:kokoro"),
+        kokoro_sample_rate=int(os.getenv("RALLEH_VOICE_KOKORO_SAMPLE_RATE", "24000")),
+        kokoro_output_format=os.getenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "pcm_s16le"),
     )

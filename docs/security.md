@@ -1,4 +1,4 @@
-# Security model (Phase 1 MVP)
+# Security model (Phase 2 adapter wiring)
 
 ## Principles
 
@@ -11,13 +11,14 @@
 
 - HTTP health/readiness endpoints expose non-sensitive metadata.
 - WebSocket event parser rejects malformed/unsupported payloads with structured errors.
+- Adapter runtime failures are surfaced as structured `ADAPTER_FAILURE` events without leaking token values.
 - `.env.example` uses `*_REF` patterns for secret indirection.
 - Service is intended to run behind Caddy with TLS termination at edge.
 
 ## Secret handling contract
 
 Expected runtime secret delivery (via provisioning):
-- OpenClaw gateway token reference/value at runtime only
+- OpenClaw gateway token reference/value at runtime only (used by optional `openclaw-gateway` bridge mode)
 - optional TLS secrets if architecture changes (currently Caddy-first)
 
 Secret material must never appear in:

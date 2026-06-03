@@ -1,4 +1,4 @@
-# Architecture (Phase 1 browser voice MVP)
+# Architecture (Phase 2 adapter wiring)
 
 ## Scope stance
 
@@ -13,11 +13,11 @@ It should be deployable either:
 1. Browser/mobile microphone captures PCM16 mono audio.
 2. Client chunks audio and sends base64 PCM frames over WebSocket.
 3. Voice gateway receives JSON events and buffers audio per turn.
-4. On `audio.input.end`, gateway runs a deterministic pipeline for MVP:
-   - VAD adapter (`deterministic`) filters empty chunks
-   - STT adapter (`deterministic`) normalizes utf-8 placeholder transcript
-   - bridge adapter (`deterministic`) returns predictable text reply
-   - TTS adapter (`deterministic`) emits base64 placeholder output chunk
+4. On `audio.input.end`, gateway runs adapter-selected pipeline:
+   - VAD adapter (deterministic default, optional silero)
+   - STT adapter (deterministic default, optional faster-whisper)
+   - bridge adapter (deterministic default, openclaw-gateway skeleton)
+   - TTS adapter (deterministic default, optional kokoro)
 5. Gateway emits transcript/reply/audio-output events and `session.done`.
 
 ```text
@@ -83,15 +83,17 @@ This is foundational behavior, not full duplex production barge-in.
 
 ## Adapter boundaries and TODOs
 
-The code intentionally keeps adapters swappable and lightweight for local tests.
+The code keeps adapters swappable and lightweight for local tests.
 
-Planned real adapters (not downloaded/wired by default):
-- Silero VAD adapter (`RALLEH_VOICE_ADAPTER_VAD=silero`)
-- Faster-Whisper STT adapter (`RALLEH_VOICE_ADAPTER_STT=faster-whisper`)
-- OpenClaw gateway bridge (`RALLEH_VOICE_ADAPTER_BRIDGE=openclaw-gateway`)
-- Kokoro TTS streaming adapter (`RALLEH_VOICE_ADAPTER_TTS=kokoro`)
+Implemented in Phase 2:
+- explicit adapter modules + factory wiring
+- deterministic adapters remain default
+- real adapters are lazy optional imports
+- missing dependency/config/model-path issues raise structured adapter errors
 
-Current implementation maps all modes to deterministic local adapters until those integrations are safely added.
+Current limitations:
+- Silero/Faster-Whisper/Kokoro adapters are guarded boundaries and not full runtime audio implementations yet.
+- OpenClaw bridge remains strict skeleton until this repo pins stable endpoint contract details.
 
 ## Future phone transport
 

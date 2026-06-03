@@ -66,5 +66,8 @@ def parse_client_event(raw: str) -> ParseResult:
     return ParseResult(event_type=event_type, payload=payload)
 
 
-def structured_error(code: str, detail: str) -> dict[str, str]:
-    return {"code": code, "detail": detail}
+def structured_error(code: str, detail: str, *, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"code": code, "detail": detail}
+    if meta is not None:
+        payload["meta"] = meta
+    return payload

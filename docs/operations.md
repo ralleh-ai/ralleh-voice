@@ -9,7 +9,7 @@ Single API service:
 ## Health checks
 
 - `GET /v1/healthz` => liveness + selected adapter modes
-- `GET /v1/readyz` => process/config readiness
+- `GET /v1/readyz` => process/config readiness + per-adapter readiness flags
 
 ## Logging
 
@@ -28,6 +28,7 @@ Recommended production posture:
 - unsupported inbound type => `session.error` (`UNSUPPORTED_EVENT`)
 - invalid/empty audio chunk => `session.error` (`BAD_AUDIO_CHUNK`)
 - end-turn without chunks => `session.error` (`EMPTY_TURN`)
+- adapter failure (missing dep/model/endpoint) => `session.error` (`ADAPTER_FAILURE`) with structured `meta`
 - cancel => `session.done` with `reason=cancelled`
 
 ## Practical SLO starter targets
@@ -38,7 +39,7 @@ Recommended production posture:
 
 ## Known MVP limitations
 
-- deterministic adapters only by default (no real speech models)
+- deterministic adapters by default (real adapter modes are optional and may report not-ready)
 - output "audio" is placeholder base64 text chunk, not playable PCM stream
 - no authn/authz and no multitenant isolation yet
 - no persistent transcript storage (intentionally minimal)

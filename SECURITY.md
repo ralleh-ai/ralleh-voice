@@ -20,11 +20,13 @@ When reporting, include:
 - service binds loopback by default
 - no secrets should be committed to git
 - malformed WebSocket events are handled with structured errors
+- adapter failures are surfaced as structured errors without exposing token values
 
 ## Current limitations (known)
 
 - no authentication/authorization on WS path yet
 - no production-grade rate limiting yet
 - deterministic placeholder adapters by default
+- openclaw-gateway bridge mode requires pinned endpoint contract before activation
 
 Do not deploy this MVP on a public internet endpoint without additional hardening.

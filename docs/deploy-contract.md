@@ -1,4 +1,4 @@
-# Deploy contract (v0.2 phase-1 MVP)
+# Deploy contract (v0.2 phase-2 adapter wiring)
 
 ## Runtime artifact contract
 
@@ -18,7 +18,7 @@ Provisioning or install flow should produce:
 ## HTTP contract
 
 - `GET /v1/healthz` -> `{status:"ok", ...}`
-- `GET /v1/readyz` -> `{ready:true, ...}`
+- `GET /v1/readyz` -> `{ready:<bool>, adapters:{...}, ...}`
 
 ## WS contract
 

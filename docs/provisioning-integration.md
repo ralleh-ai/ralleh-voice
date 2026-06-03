@@ -16,7 +16,7 @@ spec:
     transport:
       mode: browser-websocket # browser-websocket | sip (future)
     adapters:
-      vad: deterministic # deterministic | stub | silero (future)
+      vad: deterministic # deterministic | stub | silero
       stt: deterministic # deterministic | stub | faster-whisper
       tts: deterministic # deterministic | stub | kokoro
       openclawBridge: deterministic # deterministic | stub | openclaw-gateway
@@ -53,5 +53,6 @@ Minimum required secret refs when `enabled=true`:
 ## Non-goals for v0.2
 
 - downloading large voice models during core provision by default
+- forcing optional real adapters in CI/provision smoke checks
 - PSTN phone service setup
 - telephony compliance bundle

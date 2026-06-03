@@ -28,15 +28,8 @@ from .events import (
     parse_client_event,
     structured_error,
 )
-from .pipeline import (
-    DeterministicOpenClawBridge,
-    DeterministicSTT,
-    DeterministicTTS,
-    DeterministicVAD,
-    PipelineCancelled,
-    TurnState,
-    VoicePipeline,
-)
+from .adapters import build_adapters
+from .pipeline import PipelineAdapterFailure, PipelineCancelled, TurnState, VoicePipeline
 
 
 @dataclass(slots=True)
@@ -59,7 +52,7 @@ def health_payload() -> dict[str, Any]:
     return {
         "service": "ralleh-voice",
         "status": "ok",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "env": cfg.env,
         "components": {
             "vad": cfg.adapter_vad,
@@ -72,29 +65,37 @@ def health_payload() -> dict[str, Any]:
 
 def readiness_payload() -> dict[str, Any]:
     cfg = load_settings()
+    adapters = build_adapters(cfg)
+    readiness_by_component = {
+        component: {
+            **status,
+            "ready": status.get("selected") in {"deterministic", "stub"},
+        }
+        for component, status in adapters.status.items()
+    }
+    ready = all(component.get("ready") is True for component in readiness_by_component.values())
     return {
         "service": "ralleh-voice",
-        "ready": True,
+        "ready": ready,
         "openclaw_gateway_url": cfg.openclaw_gateway_url,
-        "note": "Readiness means process/config ready; model warmup is adapter-specific.",
+        "adapters": readiness_by_component,
+        "note": "Readiness reports configured adapter readiness; real adapters may require optional deps/runtime model bootstrap.",
     }
 
 
 def _build_pipeline(cfg: Settings) -> VoicePipeline:
-    # Deterministic adapters are used for the MVP by default.
-    # Non-deterministic options are declared/configurable for future integration,
-    # but currently map to deterministic placeholders to keep tests lightweight.
+    adapters = build_adapters(cfg)
     return VoicePipeline(
-        vad=DeterministicVAD(),
-        stt=DeterministicSTT(),
-        bridge=DeterministicOpenClawBridge(),
-        tts=DeterministicTTS(),
+        vad=adapters.vad,
+        stt=adapters.stt,
+        bridge=adapters.bridge,
+        tts=adapters.tts,
     )
 
 
 def create_app():
     cfg = load_settings()
-    app = FastAPI(title="ralleh-voice", version="0.2.0")
+    app = FastAPI(title="ralleh-voice", version="0.2.1")
 
     if cfg.static_enabled:
         app.mount("/static", StaticFiles(directory="static", html=True), name="static")
@@ -124,8 +125,8 @@ def create_app():
             async with seq_lock:
                 await ws.send_text(json.dumps(event_envelope(event_type, session.session_id, session.next(), payload)))
 
-        async def send_error(code: str, detail: str) -> None:
-            await send_event(EVENT_ERROR, structured_error(code=code, detail=detail))
+        async def send_error(code: str, detail: str, *, meta: dict[str, Any] | None = None) -> None:
+            await send_event(EVENT_ERROR, structured_error(code=code, detail=detail, meta=meta))
 
         async def run_buffered_turn(chunks: list[bytes]) -> None:
             if not chunks:
@@ -157,6 +158,13 @@ def create_app():
                 await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "turn-complete"})
             except PipelineCancelled:
                 await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "cancelled"})
+            except PipelineAdapterFailure as exc:
+                payload = exc.error.to_payload()
+                await send_error("ADAPTER_FAILURE", payload["detail"], meta=payload)
+                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "error"})
+            except Exception as exc:
+                await send_error("PIPELINE_FAILURE", str(exc))
+                await send_event(EVENT_DONE, {"turn_id": turn.turn_id, "reason": "error"})
             finally:
                 session.current_turn = None
                 session.turn_task = None

@@ -51,3 +51,24 @@ def test_ws_invalid_base64_chunk():
         err = ws.receive_json()
         assert err["type"] == "session.error"
         assert err["payload"]["code"] == "BAD_AUDIO_CHUNK"
+
+
+def test_ws_adapter_failure_returns_structured_error(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_BRIDGE", "openclaw-gateway")
+
+    app = create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()  # initial ready
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        ws.send_json({"type": "audio.input.end", "payload": {}})
+
+        err = ws.receive_json()
+        done = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "ADAPTER_FAILURE"
+        assert err["payload"]["meta"]["component"] == "openclaw_bridge"
+        assert done["type"] == "session.done"
+        assert done["payload"]["reason"] == "error"
