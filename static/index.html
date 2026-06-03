@@ -159,6 +159,7 @@
       flex: 0 0 auto;
       background: var(--text-muted);
       box-shadow: 0 0 0 2px #0000001f inset;
+      transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
     }
 
     .dot.connected, .dot.listening, .dot.processing { background: var(--ok); }
@@ -231,6 +232,39 @@
       gap: var(--s-3);
     }
 
+    .setup-sections {
+      display: grid;
+      gap: var(--s-3);
+    }
+
+    .setup-section {
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: color-mix(in srgb, var(--surface-3) 90%, transparent);
+      padding: var(--s-3);
+      display: grid;
+      gap: var(--s-3);
+    }
+
+    .setup-section-head {
+      display: grid;
+      gap: 0.18rem;
+    }
+
+    .setup-section-title {
+      margin: 0;
+      color: var(--text);
+      font-size: var(--fs-1);
+      line-height: var(--lh-tight);
+    }
+
+    .setup-section-copy {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: var(--fs-0);
+      line-height: var(--lh-relaxed);
+    }
+
     .field-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -283,20 +317,47 @@
       gap: var(--s-2);
     }
 
-    .actions {
+    .action-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      padding: var(--s-3);
+      display: grid;
+      gap: var(--s-3);
+    }
+
+    .action-head {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .action-groups {
+      display: grid;
+      gap: var(--s-2);
+    }
+
+    .action-group {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--s-2);
+    }
+
+    .action-hint {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      line-height: var(--lh-relaxed);
     }
 
     button {
       border-radius: var(--r-sm);
       border: 1px solid var(--line);
       background: var(--surface-3);
-      padding: 0.56rem 0.72rem;
+      padding: 0.62rem 0.8rem;
       font-weight: 620;
       cursor: pointer;
-      min-height: 2.3rem;
+      min-height: 2.55rem;
+      transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
     }
 
     button.primary {
@@ -309,6 +370,16 @@
       border-color: #b57f37;
       background: linear-gradient(180deg, #e8ae5a, #c8893a);
       color: #19130a;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px #00000016;
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: none;
     }
 
     button:disabled {
@@ -351,6 +422,123 @@
       padding: var(--s-3) var(--s-4);
     }
 
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr);
+      gap: var(--s-3);
+    }
+
+    .identity-card,
+    .status-hero {
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      min-height: 0;
+    }
+
+    .identity-card {
+      padding: var(--s-4);
+      display: grid;
+      gap: var(--s-3);
+      align-content: start;
+    }
+
+    .identity-eyebrow {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: var(--fs-0);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .identity-title {
+      margin: 0;
+      font-size: clamp(1.2rem, 1.15rem + 0.5vw, 1.55rem);
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+    }
+
+    .identity-sub {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      line-height: var(--lh-relaxed);
+      max-width: 60ch;
+    }
+
+    .meta-row,
+    .mini-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+    }
+
+    .meta-row {
+      margin-top: var(--s-3);
+    }
+
+    .mini-badge {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      max-width: 100%;
+      padding: 0.38rem 0.62rem;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+      color: var(--text-soft);
+      font-size: var(--fs-0);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .identity-grid {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--s-2);
+    }
+
+    .identity-item {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: #00000014;
+      padding: var(--s-3);
+      min-width: 0;
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .identity-item dt {
+      color: var(--text-muted);
+      font-size: var(--fs-0);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .identity-item dd {
+      margin: 0;
+      color: var(--text);
+      font-size: var(--fs-1);
+      line-height: var(--lh-base);
+      overflow-wrap: anywhere;
+    }
+
+    .status-hero {
+      display: grid;
+      gap: var(--s-3);
+      padding: var(--s-3);
+      align-content: start;
+    }
+
+    .status-strip-hero {
+      min-height: 100%;
+      align-items: start;
+      padding: var(--s-4);
+    }
+
     .orb {
       width: 1rem;
       height: 1rem;
@@ -359,36 +547,52 @@
       box-shadow: 0 0 0 0.28rem #f26f6f24;
     }
 
+    .status-strip-hero .orb {
+      width: 1.2rem;
+      height: 1.2rem;
+      box-shadow: 0 0 0 0.42rem #f26f6f17;
+      margin-top: 0.12rem;
+    }
+
     .orb.connected, .orb.listening, .orb.processing { background: var(--ok); box-shadow: 0 0 0 0.28rem #39c38130; }
     .orb.connecting { background: var(--warn); box-shadow: 0 0 0 0.28rem #f4b14f2f; }
+
+    .orb.connecting,
+    .orb.listening,
+    .orb.processing {
+      animation: signalPulse 1.8s ease-in-out infinite;
+    }
 
     .status-main {
       display: grid;
       min-width: 0;
-      gap: 0.16rem;
+      gap: 0.28rem;
     }
 
     .status-main strong {
-      font-size: var(--fs-2);
-      line-height: var(--lh-tight);
+      font-size: clamp(1.1rem, 1rem + 0.35vw, 1.35rem);
+      line-height: 1.1;
     }
 
     .status-main span {
       color: var(--text-soft);
       font-size: var(--fs-1);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: var(--lh-relaxed);
+      overflow-wrap: anywhere;
     }
 
     .caption {
-      text-align: right;
       color: var(--text-muted);
       font-size: var(--fs-0);
-      max-width: 28ch;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+    }
+
+    .hero-caption {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: var(--fs-1);
+      line-height: var(--lh-relaxed);
+      min-height: 2.5em;
+      overflow-wrap: anywhere;
     }
 
     .metrics-grid {
@@ -400,7 +604,7 @@
     .metric-card {
       border: 1px solid var(--line);
       border-radius: var(--r-md);
-      background: var(--surface-3);
+      background: color-mix(in srgb, var(--surface-3) 88%, transparent);
       padding: var(--s-3);
       min-width: 0;
       display: grid;
@@ -416,7 +620,7 @@
     }
 
     .metric-value {
-      font-size: var(--fs-3);
+      font-size: 0.98rem;
       font-weight: 680;
       min-width: 0;
       overflow: hidden;
@@ -485,6 +689,40 @@
       gap: var(--s-2);
     }
 
+    .timeline-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      margin: 0;
+    }
+
+    .timeline-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.38rem;
+      padding: 0.2rem 0.48rem;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--line);
+      color: var(--text-soft);
+      font-size: var(--fs-0);
+      background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+    }
+
+    .timeline-chip::before {
+      content: '';
+      width: 0.48rem;
+      height: 0.48rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.9;
+    }
+
+    .timeline-chip.user { color: #4ab788; }
+    .timeline-chip.agent { color: #6c9efe; }
+    .timeline-chip.partial { color: #f4b35e; }
+    .timeline-chip.system { color: #a998e2; }
+    .timeline-chip.error { color: #eb7a7a; }
+
     .timeline {
       border: 1px solid var(--line);
       border-radius: var(--r-sm);
@@ -505,7 +743,8 @@
       padding: var(--s-2) var(--s-3);
       min-width: 0;
       display: grid;
-      gap: 0.2rem;
+      gap: 0.28rem;
+      box-shadow: 0 1px 0 #00000010;
     }
 
     .entry.user { border-left-color: #4ab788; }
@@ -521,6 +760,8 @@
       justify-content: space-between;
       gap: var(--s-2);
       min-width: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .entry .head > span { min-width: 0; }
@@ -529,15 +770,19 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       word-break: break-word;
-      line-height: var(--lh-relaxed);
-      font-size: var(--fs-2);
+      line-height: 1.62;
+      font-size: 0.97rem;
+    }
+
+    .entry.agent .body {
+      font-size: 1rem;
     }
 
     /* Right rail diagnostics */
     details {
       border: 1px solid var(--line);
       border-radius: var(--r-md);
-      background: var(--surface-3);
+      background: color-mix(in srgb, var(--surface-3) 76%, transparent);
       padding: var(--s-2) var(--s-3);
     }
 
@@ -572,7 +817,7 @@
     .adv-item {
       border: 1px solid var(--line);
       border-radius: var(--r-sm);
-      background: var(--surface-3);
+      background: color-mix(in srgb, var(--surface-3) 82%, transparent);
       padding: var(--s-2) var(--s-3);
       display: grid;
       gap: 0.2rem;
@@ -643,6 +888,21 @@
       border: 0;
     }
 
+    @keyframes signalPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(120, 166, 255, 0.08); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 0.48rem rgba(120, 166, 255, 0.10); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(120, 166, 255, 0.08); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
     @media (max-width: 1240px) {
       .layout {
         grid-template-columns: 290px minmax(0, 1fr) 320px;
@@ -686,10 +946,21 @@
       .timeline { max-height: 48vh; }
     }
 
+    @media (max-width: 1080px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .identity-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 680px) {
       .field-row,
       .metrics-grid,
-      .actions {
+      .action-group,
+      .identity-grid {
         grid-template-columns: 1fr;
       }
 
@@ -731,102 +1002,125 @@
           </header>
 
           <form class="field-grid" onsubmit="return false" aria-label="Session configuration form">
-            <div class="field-row">
-              <div class="field">
-                <label for="agentTarget">Agent target</label>
-                <select id="agentTarget">
-                  <option value="openclaw/default">Default Agent</option>
-                  <option value="openclaw/ralleh">Ralleh</option>
-                  <option value="openclaw/research">Research Assistant</option>
-                  <option value="openclaw/support">Support Agent</option>
-                  <option value="custom">Custom target…</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="voiceProfile">Voice profile</label>
-                <select id="voiceProfile">
-                  <option value="neutral-clear">Neutral · Clear</option>
-                  <option value="warm-concise">Warm · Concise</option>
-                  <option value="energetic-fast">Energetic · Fast</option>
-                  <option value="deep-calm">Deep · Calm</option>
-                </select>
-              </div>
-            </div>
+            <div class="setup-sections">
+              <section class="setup-section" aria-labelledby="setupIdentityHeading">
+                <header class="setup-section-head">
+                  <h3 id="setupIdentityHeading" class="setup-section-title">Identity</h3>
+                  <p class="setup-section-copy">Choose who answers and how the voice session should feel.</p>
+                </header>
 
-            <div id="customAgentWrap" class="field" hidden>
-              <label for="customAgentTarget">Custom agent target</label>
-              <input id="customAgentTarget" type="text" placeholder="openclaw/your-agent" autocomplete="off" />
-            </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="agentTarget">Agent target</label>
+                    <select id="agentTarget">
+                      <option value="openclaw/default">Default Agent</option>
+                      <option value="openclaw/ralleh">Ralleh</option>
+                      <option value="openclaw/research">Research Assistant</option>
+                      <option value="openclaw/support">Support Agent</option>
+                      <option value="custom">Custom target…</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="voiceProfile">Voice profile</label>
+                    <select id="voiceProfile">
+                      <option value="neutral-clear">Neutral · Clear</option>
+                      <option value="warm-concise">Warm · Concise</option>
+                      <option value="energetic-fast">Energetic · Fast</option>
+                      <option value="deep-calm">Deep · Calm</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div class="field-row">
-              <div class="field">
-                <label for="conversationMode">Conversation mode</label>
-                <select id="conversationMode">
-                  <option value="command">Command</option>
-                  <option value="balanced" selected>Balanced</option>
-                  <option value="companion">Companion</option>
-                  <option value="debug">Debug</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="performanceMode">Performance mode</label>
-                <select id="performanceMode">
-                  <option value="eco">Eco</option>
-                  <option value="balanced" selected>Balanced</option>
-                  <option value="low-latency">Low latency</option>
-                </select>
-              </div>
-            </div>
+                <div id="customAgentWrap" class="field" hidden>
+                  <label for="customAgentTarget">Custom agent target</label>
+                  <input id="customAgentTarget" type="text" placeholder="openclaw/your-agent" autocomplete="off" />
+                </div>
+              </section>
 
-            <div class="field-row">
-              <div class="field">
-                <label for="chunkProfile">Responsiveness profile</label>
-                <select id="chunkProfile">
-                  <option value="snappy">Snappy (120ms chunks)</option>
-                  <option value="balanced" selected>Balanced (240ms chunks)</option>
-                  <option value="steady">Steady (320ms chunks)</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="chunkMs">Custom chunk duration (ms)</label>
-                <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" inputmode="numeric" />
-              </div>
-            </div>
+              <section class="setup-section" aria-labelledby="setupBehaviorHeading">
+                <header class="setup-section-head">
+                  <h3 id="setupBehaviorHeading" class="setup-section-title">Behavior</h3>
+                  <p class="setup-section-copy">Set conversation style, performance posture, and responsiveness.</p>
+                </header>
 
-            <div class="field">
-              <label for="bargeSensitivity" class="range-label">
-                <span>Barge-in sensitivity</span>
-                <strong><span id="bargeSensitivityValue">60</span>%</strong>
-              </label>
-              <input id="bargeSensitivity" type="range" min="0" max="100" step="1" value="60" />
-            </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="conversationMode">Conversation mode</label>
+                    <select id="conversationMode">
+                      <option value="command">Command</option>
+                      <option value="balanced" selected>Balanced</option>
+                      <option value="companion">Companion</option>
+                      <option value="debug">Debug</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="performanceMode">Performance mode</label>
+                    <select id="performanceMode">
+                      <option value="eco">Eco</option>
+                      <option value="balanced" selected>Balanced</option>
+                      <option value="low-latency">Low latency</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div class="field">
-              <label for="outputVolume">Output volume (future playback path)</label>
-              <input id="outputVolume" type="range" min="0" max="100" step="1" value="100" />
-              <p class="hint">Output PCM playback is not wired yet; this remains a client preference only.</p>
-            </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="chunkProfile">Responsiveness profile</label>
+                    <select id="chunkProfile">
+                      <option value="snappy">Snappy (120ms chunks)</option>
+                      <option value="balanced" selected>Balanced (240ms chunks)</option>
+                      <option value="steady">Steady (320ms chunks)</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="chunkMs">Custom chunk duration (ms)</label>
+                    <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" inputmode="numeric" />
+                  </div>
+                </div>
 
-            <div class="field">
-              <label for="authToken">Session token (in-memory only)</label>
-              <input id="authToken" type="password" placeholder="required only when WS auth is enabled" autocomplete="off" />
-            </div>
+                <div class="field">
+                  <label for="bargeSensitivity" class="range-label">
+                    <span>Barge-in sensitivity</span>
+                    <strong><span id="bargeSensitivityValue">60</span>%</strong>
+                  </label>
+                  <input id="bargeSensitivity" type="range" min="0" max="100" step="1" value="60" />
+                </div>
+              </section>
 
-            <div class="field-row" role="group" aria-label="Session behavior toggles">
-              <label class="checkline" for="autoReconnect">
-                <input id="autoReconnect" type="checkbox" checked />
-                Auto reconnect WebSocket
-              </label>
-              <label class="checkline" for="fadeOnCancel">
-                <input id="fadeOnCancel" type="checkbox" disabled />
-                Fade output on cancel (pending)
-              </label>
-            </div>
+              <section class="setup-section" aria-labelledby="setupSessionHeading">
+                <header class="setup-section-head">
+                  <h3 id="setupSessionHeading" class="setup-section-title">Session</h3>
+                  <p class="setup-section-copy">Manage auth and continuity settings without storing secrets locally.</p>
+                </header>
 
-            <div class="field">
-              <label for="voicePreview">Voice preview</label>
-              <button id="voicePreview" disabled aria-disabled="true">Preview voice (coming soon)</button>
+                <div class="field">
+                  <label for="outputVolume">Output volume (future playback path)</label>
+                  <input id="outputVolume" type="range" min="0" max="100" step="1" value="100" />
+                  <p class="hint">Output PCM playback is not wired yet; this remains a client preference only.</p>
+                </div>
+
+                <div class="field">
+                  <label for="authToken">Session token (in-memory only)</label>
+                  <input id="authToken" type="password" placeholder="required only when WS auth is enabled" autocomplete="off" />
+                </div>
+
+                <div class="field-row" role="group" aria-label="Session behavior toggles">
+                  <label class="checkline" for="autoReconnect">
+                    <input id="autoReconnect" type="checkbox" checked />
+                    Auto reconnect WebSocket
+                  </label>
+                  <label class="checkline" for="fadeOnCancel">
+                    <input id="fadeOnCancel" type="checkbox" disabled />
+                    Fade output on cancel (pending)
+                  </label>
+                </div>
+
+                <div class="field">
+                  <label for="voicePreview">Voice preview</label>
+                  <button id="voicePreview" disabled aria-disabled="true">Preview voice (coming soon)</button>
+                </div>
+              </section>
             </div>
 
             <p class="hint">Token values are never persisted to localStorage; only non-secret UI preferences are saved.</p>
@@ -842,23 +1136,75 @@
             <p class="panel-copy">Primary controls, capture meter, live captions, and timeline of user/agent turns.</p>
           </header>
 
-          <div class="status-strip" role="status" aria-live="polite">
-            <span id="stageOrb" class="orb disconnected" aria-hidden="true"></span>
-            <div class="status-main">
-              <strong id="stageState" class="truncate">Disconnected</strong>
-              <span id="stageSession" class="mono truncate">session: pending</span>
-            </div>
-            <span id="liveCaption" class="caption">Awaiting connection</span>
-          </div>
+          <section class="hero-grid" aria-label="Agent identity and live state">
+            <article class="identity-card" aria-labelledby="identityHeading">
+              <header class="panel-head">
+                <p class="identity-eyebrow">Who you are talking to</p>
+                <h3 id="identityHeading" class="identity-title">You are talking to <span id="agentIdentityName">Default Agent</span></h3>
+                <p id="agentIdentitySummary" class="identity-sub">Configured for a balanced voice session with operator-visible state, timeline, and diagnostics.</p>
+              </header>
 
-          <nav class="actions" aria-label="Primary controls">
-            <button id="connectBtn" class="primary">Connect</button>
-            <button id="disconnectBtn" disabled>Disconnect</button>
-            <button id="startMicBtn" disabled class="primary">Start mic</button>
-            <button id="stopMicBtn" disabled>Stop mic + send turn</button>
-            <button id="cancelBtn" disabled class="warn">Cancel / barge-in</button>
-            <button id="clearTimelineBtn">Clear timeline</button>
-          </nav>
+              <dl class="identity-grid" aria-label="Current session identity summary">
+                <div class="identity-item">
+                  <dt>Voice</dt>
+                  <dd id="agentIdentityVoice">Neutral · Clear</dd>
+                </div>
+                <div class="identity-item">
+                  <dt>Mode</dt>
+                  <dd id="agentIdentityMode">Balanced · Balanced</dd>
+                </div>
+                <div class="identity-item">
+                  <dt>Responsiveness</dt>
+                  <dd id="agentIdentityResponsiveness">Balanced · 240 ms chunks</dd>
+                </div>
+              </dl>
+
+              <div class="meta-row" aria-label="Current session badges">
+                <span id="headerAuthBadge" class="mini-badge">Auth · unknown</span>
+                <span id="headerProcessingBadge" class="mini-badge">Processing · unknown</span>
+                <span id="headerContinuityBadge" class="mini-badge">Session continuity pending</span>
+              </div>
+            </article>
+
+            <article class="status-hero" aria-labelledby="statusHeroHeading">
+              <div class="status-strip status-strip-hero" role="status" aria-live="polite">
+                <span id="stageOrb" class="orb disconnected" aria-hidden="true"></span>
+                <div class="status-main">
+                  <span class="identity-eyebrow">What is happening right now</span>
+                  <strong id="stageState">Disconnected</strong>
+                  <span id="stageSession" class="mono truncate">session: pending</span>
+                </div>
+                <span id="stageStateTone" class="mini-badge">Idle</span>
+              </div>
+
+              <div>
+                <h3 id="statusHeroHeading" class="sr-only">Live state summary</h3>
+                <p id="liveCaption" class="hero-caption">Awaiting connection</p>
+              </div>
+            </article>
+          </section>
+
+          <section class="action-panel" aria-labelledby="actionPanelHeading">
+            <header class="action-head">
+              <h3 id="actionPanelHeading">What you can do now</h3>
+              <p id="actionHint" class="action-hint">Connect first, then start the microphone when you are ready to speak.</p>
+            </header>
+
+            <div class="action-groups" aria-label="Primary controls">
+              <div class="action-group">
+                <button id="connectBtn" class="primary">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+              </div>
+              <div class="action-group">
+                <button id="startMicBtn" disabled class="primary">Start mic</button>
+                <button id="stopMicBtn" disabled>Stop mic + send turn</button>
+              </div>
+              <div class="action-group">
+                <button id="cancelBtn" disabled class="warn">Cancel / barge-in</button>
+                <button id="clearTimelineBtn">Clear timeline</button>
+              </div>
+            </div>
+          </section>
 
           <section class="meter" aria-labelledby="meter-heading">
             <h3 id="meter-heading">Mic input meter</h3>
@@ -875,6 +1221,13 @@
               <h3 id="timeline-heading">Transcript & turn timeline</h3>
               <span class="hint">Scrollable · newest entries pinned to bottom</span>
             </header>
+            <div class="timeline-legend" aria-label="Timeline legend">
+              <span class="timeline-chip user">You said</span>
+              <span class="timeline-chip partial">Live partial</span>
+              <span class="timeline-chip agent">Agent replied</span>
+              <span class="timeline-chip system">System note</span>
+              <span class="timeline-chip error">Error</span>
+            </div>
             <div id="timeline" class="timeline" aria-live="polite" aria-label="Conversation timeline"></div>
           </section>
 
@@ -965,7 +1318,17 @@
     const stageOrb = document.getElementById('stageOrb');
     const stageState = document.getElementById('stageState');
     const stageSession = document.getElementById('stageSession');
+    const stageStateToneEl = document.getElementById('stageStateTone');
     const liveCaption = document.getElementById('liveCaption');
+
+    const agentIdentityNameEl = document.getElementById('agentIdentityName');
+    const agentIdentitySummaryEl = document.getElementById('agentIdentitySummary');
+    const agentIdentityVoiceEl = document.getElementById('agentIdentityVoice');
+    const agentIdentityModeEl = document.getElementById('agentIdentityMode');
+    const agentIdentityResponsivenessEl = document.getElementById('agentIdentityResponsiveness');
+    const headerAuthBadgeEl = document.getElementById('headerAuthBadge');
+    const headerProcessingBadgeEl = document.getElementById('headerProcessingBadge');
+    const headerContinuityBadgeEl = document.getElementById('headerContinuityBadge');
 
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
@@ -973,6 +1336,7 @@
     const stopMicBtn = document.getElementById('stopMicBtn');
     const cancelBtn = document.getElementById('cancelBtn');
     const clearTimelineBtn = document.getElementById('clearTimelineBtn');
+    const actionHintEl = document.getElementById('actionHint');
 
     const agentTargetEl = document.getElementById('agentTarget');
     const customAgentWrapEl = document.getElementById('customAgentWrap');
@@ -1100,7 +1464,7 @@
 
       const preview = (body || '').replace(/\s+/g, ' ').trim();
       if (preview) {
-        liveCaption.textContent = preview.length > 90 ? `${preview.slice(0, 87)}…` : preview;
+        liveCaption.textContent = preview.length > 180 ? `${preview.slice(0, 177)}…` : preview;
       }
     }
 
@@ -1118,9 +1482,47 @@
       return value;
     }
 
+    function getStateTone(value) {
+      if (value === STATE.disconnected) return 'Idle';
+      if (value === STATE.connecting) return 'Joining';
+      if (value === STATE.connected) return 'Ready';
+      if (value === STATE.listening) return 'Capturing';
+      if (value === STATE.processing) return 'Working';
+      return 'Live';
+    }
+
+    function humanizeAgentTarget(target) {
+      const raw = (target || '').trim();
+      if (!raw) return 'Default Agent';
+      const value = raw.replace(/^openclaw\//, '');
+      if (!value || value === 'default') return 'Default Agent';
+      return value
+        .split(/[\-_\s]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    }
+
+    function updateIdentitySummary() {
+      const target = effectiveAgentTarget();
+      const agentName = humanizeAgentTarget(target);
+      const voiceLabel = voiceProfileEl.options[voiceProfileEl.selectedIndex]?.text || voiceProfileEl.value;
+      const convoLabel = conversationModeEl.options[conversationModeEl.selectedIndex]?.text || conversationModeEl.value;
+      const perfLabel = performanceModeEl.options[performanceModeEl.selectedIndex]?.text || performanceModeEl.value;
+      const chunkLabel = chunkProfileEl.options[chunkProfileEl.selectedIndex]?.text || chunkProfileEl.value;
+      const chunkMs = effectiveChunkMs();
+
+      agentIdentityNameEl.textContent = agentName;
+      agentIdentitySummaryEl.textContent = `Configured for ${convoLabel.toLowerCase()} conversation behavior, ${perfLabel.toLowerCase()} performance, and an operator-visible voice session.`;
+      agentIdentityVoiceEl.textContent = voiceLabel;
+      agentIdentityModeEl.textContent = `${convoLabel} · ${perfLabel}`;
+      agentIdentityResponsivenessEl.textContent = `${chunkLabel} · ${chunkMs} ms chunks`;
+    }
+
     function renderState() {
       const isConnected = ws && ws.readyState === WebSocket.OPEN;
       const label = getStateLabel(state);
+      const tone = getStateTone(state);
 
       stateLabel.textContent = label;
       stateDot.className = `dot ${state}`;
@@ -1128,6 +1530,7 @@
       stageState.textContent = label;
       stageOrb.className = `orb ${state}`;
       stageSession.textContent = `session: ${currentSessionId || 'pending'}`;
+      stageStateToneEl.textContent = tone;
 
       connectBtn.disabled = isConnected || state === STATE.connecting;
       disconnectBtn.disabled = !isConnected;
@@ -1135,9 +1538,22 @@
       stopMicBtn.disabled = state !== STATE.listening;
       cancelBtn.disabled = !isConnected;
 
+      if (state === STATE.disconnected) {
+        actionHintEl.textContent = 'Connect first, then start the microphone when you are ready to speak.';
+      } else if (state === STATE.connecting) {
+        actionHintEl.textContent = 'Joining the transport now. Wait for the session to become ready.';
+      } else if (state === STATE.connected) {
+        actionHintEl.textContent = 'The session is ready. Start the microphone to begin a turn.';
+      } else if (state === STATE.listening) {
+        actionHintEl.textContent = 'The mic is live. Stop the mic to send the turn, or cancel to interrupt.';
+      } else if (state === STATE.processing) {
+        actionHintEl.textContent = 'The system is processing this turn. You can still cancel if you need to barge in.';
+      }
+
       cardConnectionEl.textContent = `${label}${isConnected ? ' · live' : ''}`;
       cardReconnectEl.textContent = `Auto reconnect ${autoReconnectEl.checked ? 'enabled' : 'disabled'} · attempts ${reconnectAttempt}`;
       advReconnectAttemptsEl.textContent = String(reconnectAttempt);
+      updateIdentitySummary();
     }
 
     function setState(next) {
@@ -1219,6 +1635,7 @@
     function syncAgentTargetUI() {
       customAgentWrapEl.hidden = agentTargetEl.value !== 'custom';
       persistPrefs();
+      updateIdentitySummary();
     }
 
     function syncBargeLabel() {
@@ -1231,6 +1648,7 @@
         chunkMsEl.value = String(effectiveChunkMs());
       }
       persistPrefs();
+      updateIdentitySummary();
     }
 
     function updateSessionCard(meta = {}) {
@@ -1250,6 +1668,11 @@
 
       cardSessionMetaEl.textContent = `${auth} · ${mode} · ${continuity}`;
       advProcessingModeEl.textContent = meta.processing_mode || 'unknown';
+      headerAuthBadgeEl.textContent = `Auth · ${auth}`;
+      headerProcessingBadgeEl.textContent = `Processing · ${meta.processing_mode || 'unknown'}`;
+      headerContinuityBadgeEl.textContent = continuity === 'session continuity active'
+        ? 'Session continuity active'
+        : 'Reconnected with new session id';
     }
 
     function updatePerfCards() {
@@ -1367,6 +1790,7 @@
 
         if (type === 'agent.reply') {
           if (!turnStats.firstResponseAt) turnStats.firstResponseAt = performance.now();
+          stageStateToneEl.textContent = 'Responding';
           addTimeline('agent', payload.text || '(empty)', payload.turn_id ? `turn ${payload.turn_id}` : '');
           updatePerfCards();
         }
@@ -1639,7 +2063,10 @@
     clearTimelineBtn.addEventListener('click', clearTimeline);
 
     agentTargetEl.addEventListener('change', syncAgentTargetUI);
-    customAgentTargetEl.addEventListener('input', persistPrefs);
+    customAgentTargetEl.addEventListener('input', () => {
+      persistPrefs();
+      updateIdentitySummary();
+    });
 
     [
       voiceProfileEl,
@@ -1650,6 +2077,7 @@
     ].forEach((el) => el.addEventListener('change', () => {
       persistPrefs();
       renderState();
+      updateIdentitySummary();
     }));
 
     bargeSensitivityEl.addEventListener('input', syncBargeLabel);
@@ -1657,6 +2085,7 @@
     chunkMsEl.addEventListener('input', () => {
       chunkProfileEl.value = 'custom';
       persistPrefs();
+      updateIdentitySummary();
     });
 
     mobileTabs.forEach((btn) => {
