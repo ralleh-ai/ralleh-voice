@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from ralleh_voice.app import create_app
 import scripts.smoke_check as smoke_check
-from scripts.smoke_check import check_health, check_ready, check_static, derive_ws_url
+from scripts.smoke_check import check_health, check_ready, check_static, derive_ws_url, path_url
 
 
 def test_derive_ws_url_http():
@@ -11,6 +11,10 @@ def test_derive_ws_url_http():
 
 def test_derive_ws_url_https():
     assert derive_ws_url("https://voice.example.com", "/v1/ws/voice") == "wss://voice.example.com/v1/ws/voice"
+
+
+def test_path_url_keeps_base_path_prefix():
+    assert path_url("https://voice.example.com/voice", "/v1/healthz") == "https://voice.example.com/voice/v1/healthz"
 
 
 def test_health_smoke_against_live_test_server(monkeypatch):

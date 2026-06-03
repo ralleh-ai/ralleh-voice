@@ -50,8 +50,15 @@ def derive_ws_url(base_url: str, ws_path: str) -> str:
     return urlunsplit((scheme, parts.netloc, path, "", ""))
 
 
+def path_url(base_url: str, path: str) -> str:
+    parts = urlsplit(base_url)
+    base_path = parts.path.rstrip("/")
+    full_path = f"{base_path}{path}" if base_path else path
+    return urlunsplit((parts.scheme, parts.netloc, full_path, "", ""))
+
+
 def check_health(base_url: str, timeout: float) -> SmokeResult:
-    payload = fetch_json(urljoin(base_url, "/v1/healthz"), timeout)
+    payload = fetch_json(path_url(base_url, "/v1/healthz"), timeout)
     if payload.get("service") != "ralleh-voice":
         return fail("/v1/healthz returned unexpected service name")
     if payload.get("status") != "ok":
@@ -60,7 +67,7 @@ def check_health(base_url: str, timeout: float) -> SmokeResult:
 
 
 def check_ready(base_url: str, timeout: float, require_ready: bool) -> SmokeResult:
-    payload = fetch_json(urljoin(base_url, "/v1/readyz"), timeout)
+    payload = fetch_json(path_url(base_url, "/v1/readyz"), timeout)
     if payload.get("service") != "ralleh-voice":
         return fail("/v1/readyz returned unexpected service name")
     ready = payload.get("ready") is True
@@ -70,7 +77,7 @@ def check_ready(base_url: str, timeout: float, require_ready: bool) -> SmokeResu
 
 
 def check_static(base_url: str, timeout: float) -> SmokeResult:
-    html = fetch_text(urljoin(base_url, "/static/"), timeout)
+    html = fetch_text(path_url(base_url, "/static/"), timeout)
     required_markers = [
         "Ralleh Voice Control Room",
         "You are talking to",
@@ -184,7 +191,7 @@ async def check_ws_turn(ws_url: str, timeout: float, auth_token: str | None, req
 async def async_main() -> int:
     parser = argparse.ArgumentParser(description="Post-install smoke check for ralleh-voice")
     parser.add_argument("--base-url", default="http://127.0.0.1:8099", help="Base HTTP URL (default: http://127.0.0.1:8099)")
-    parser.add_argument("--ws-path", default="/v1/ws/voice", help="WebSocket path (default: /v1/ws/voice)")
+    parser.add_argument("--ws-path", default=None, help="WebSocket path override (default: derived from base URL; /voice/v1/ws/voice under /voice ingress, otherwise /v1/ws/voice)")
     parser.add_argument("--timeout", type=float, default=5.0, help="Per-check timeout in seconds")
     parser.add_argument("--auth-token", default=None, help="Optional auth token for protected WS modes")
     parser.add_argument("--allow-not-ready", action="store_true", help="Do not fail when /v1/readyz reports ready=false")
@@ -206,7 +213,12 @@ async def async_main() -> int:
     if not all(result.ok for result in checks):
         return 1
 
-    ws_url = derive_ws_url(args.base_url, args.ws_path)
+    ws_path = args.ws_path
+    if not ws_path:
+        base_path = urlsplit(args.base_url).path.rstrip("/")
+        ws_path = f"{base_path}/v1/ws/voice" if base_path else "/v1/ws/voice"
+
+    ws_url = derive_ws_url(args.base_url, ws_path)
     ws_result = await check_ws_turn(
         ws_url,
         timeout=args.timeout,

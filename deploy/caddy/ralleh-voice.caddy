@@ -12,3 +12,7 @@ handle_path /voice/* {
 handle /voice {
 	redir /voice/ 308
 }
+
+handle /v1/ws/voice* {
+	reverse_proxy 127.0.0.1:8099
+}

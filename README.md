@@ -140,6 +140,17 @@ Useful flags:
 - `--allow-not-ready` — tolerate `ready=false` when intentionally using incomplete real adapters
 - `--hello-only` — stop after the WebSocket hello/ack path
 - `--auth-token <token>` — required when the deployed instance uses protected WebSocket auth modes
+- `--ws-path <path>` — override the derived WebSocket path when validating unusual ingress layouts
+
+Examples:
+
+```bash
+# direct loopback service check
+python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
+
+# public Caddy ingress mounted under /voice
+python3 scripts/smoke_check.py --base-url https://voice.example.com/voice
+```
 
 This script is intended to be the first confidence check after installation on a fresh box.
 It is expected to work with the default install, without requiring a separate dev-only dependency step.
@@ -474,7 +485,7 @@ Preferred posture:
 - systemd or Compose for service management
 
 Relevant artifacts:
-- `deploy/caddy/ralleh-voice.caddy`
+- `deploy/caddy/ralleh-voice.caddy` (routes both `/voice/*` and `/v1/ws/voice*` for browser ingress)
 - `deploy/systemd/ralleh-voice.service`
 - `deploy/Dockerfile`
 - `deploy/docker-compose.yml`
