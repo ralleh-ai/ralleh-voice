@@ -118,6 +118,29 @@ Useful repo hygiene check:
 git diff --check
 ```
 
+## Post-install smoke check
+
+After a fresh install or service restart, run the smoke checker against the deployed instance:
+
+```bash
+python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
+```
+
+What it verifies:
+- `/v1/healthz`
+- `/v1/readyz`
+- `/static/` Control Room markers
+- WebSocket connection
+- `session.hello` handshake
+- deterministic turn flow (`stt.final` -> `agent.reply` -> `audio.output.chunk` -> `session.done`)
+
+Useful flags:
+- `--allow-not-ready` — tolerate `ready=false` when intentionally using incomplete real adapters
+- `--hello-only` — stop after the WebSocket hello/ack path
+- `--auth-token <token>` — required when the deployed instance uses protected WebSocket auth modes
+
+This script is intended to be the first confidence check after installation on a fresh box.
+
 ## Control Room overview
 
 The browser Control Room is a 3-panel operator UI:
