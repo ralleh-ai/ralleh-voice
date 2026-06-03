@@ -14,10 +14,20 @@ Deterministic remains default for CI safety.
 ## Optional dependency install
 
 ```bash
+# all optional voice adapters
 pip install -e .[voice]
+
+# just Faster-Whisper STT
+pip install -e .[stt]
+
+# just Kokoro TTS
+pip install -e .[tts]
+
+# just Silero/Torch VAD
+pip install -e .[vad]
 ```
 
-This installs heavy optional packages; CI should continue using `.[dev]` only.
+Use the narrowest extra that matches the proof/deployment target. CI should continue using `.[dev]` only.
 
 ## Current implementation limits
 

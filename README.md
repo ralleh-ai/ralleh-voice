@@ -89,8 +89,20 @@ Open:
 Real-model / voice stack dependencies:
 
 ```bash
+# all optional voice adapters
 pip install -e .[voice]
+
+# STT only
+pip install -e .[stt]
+
+# TTS only
+pip install -e .[tts]
+
+# VAD only
+pip install -e .[vad]
 ```
+
+Use the narrowest extra that matches the rehearsal or deployment target. For example, Faster-Whisper host proofs should use `.[stt]` without forcing Kokoro/Torch installation.
 
 The default install already includes the `websockets` package because the bundled post-install smoke checker depends on it.
 
