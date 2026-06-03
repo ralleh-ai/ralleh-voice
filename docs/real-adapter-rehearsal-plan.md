@@ -34,8 +34,8 @@ The packaged/systemd/Caddy-first path has been rehearsed successfully on `srv139
 
 #### Not yet executable as true real-adapter rehearsal
 - `silero`
-  - current adapter intentionally raises `NOT_IMPLEMENTED`
-  - model bootstrap/runtime detection is not wired
+  - repo runtime wiring is now implemented using the `silero-vad` package on a CPU-first path
+  - deployment proof still depends on Torch/Silero runtime availability and host-level rehearsal
 - `faster-whisper`
   - dependency/model init boundary exists
   - actual PCM transcription path intentionally raises `NOT_IMPLEMENTED`
@@ -128,7 +128,7 @@ Need:
 
 Definition of done:
 
-- `RALLEH_VOICE_ADAPTER_VAD=silero` no longer returns `NOT_IMPLEMENTED`
+- `RALLEH_VOICE_ADAPTER_VAD=silero` no longer returns `NOT_IMPLEMENTED`; it now performs real Silero chunk detection when runtime deps are present
 - real speech/no-speech decision path works on sample audio
 
 ### 2. Faster-Whisper STT runtime wiring
@@ -220,6 +220,9 @@ Run one clean hosted rehearsal on `srv1391721` with:
 - OpenClaw bridge returns real upstream reply
 - cancel/barge-in path still behaves sanely
 
+Default canonical speech-test phrase for host rehearsals:
+- `Ralleh Voice system check: secure bridge connected, speech recognition active, and response pipeline ready.`
+
 #### Performance evidence
 - handshake latency
 - first partial transcript latency
@@ -279,7 +282,7 @@ Use this wording unless the facts materially improve:
 
 - `ralleh-voice` is install-proven for the deterministic/systemd/Caddy-first deployment path on `srv1391721`.
 - The real OpenClaw bridge can be rehearsed next.
-- Full real-adapter rehearsal is still blocked until Silero, Faster-Whisper, and Kokoro runtime wiring stops returning `NOT_IMPLEMENTED` and passes host-level proof.
+- Full real-adapter rehearsal is no longer blocked on repo wiring: Faster-Whisper host proof passed, Kokoro runtime synthesis is wired in-repo for `pcm_s16le` websocket output, and Silero runtime wiring is now implemented on a CPU-first path. Remaining blockers are host-level proof for Kokoro/Silero on the deployment target plus matching the Kokoro package range to the host Python version (Python 3.13 requires the relaxed `kokoro>=0.7.16,<1.0` range).
 
 ---
 

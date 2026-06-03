@@ -291,7 +291,7 @@ The Control Room intentionally exposes some future-facing preferences without pr
 Current honest limits:
 - voice profile selection does **not** yet guarantee real backend TTS voice switching
 - output volume is **not** yet controlling true playback output
-- `audio.output.chunk` is currently placeholder text, not playable speaker audio
+- `audio.output.chunk` uses placeholder text in deterministic/stub mode; when `RALLEH_VOICE_ADAPTER_TTS=kokoro`, websocket output is emitted as base64-encoded `pcm_s16le` audio chunks with sample-rate metadata.
 - fade-on-cancel is shown as pending
 - voice preview is shown as coming soon
 - current `streaming` mode is early-start / lower-buffering behavior, not true full-duplex streaming speech
@@ -409,9 +409,9 @@ Supported / planned adapter values:
 - `openclaw-gateway`
 
 ### Current real-adapter status
-- `silero`: lazy dependency boundary in place; full runtime bootstrap still pending
+- `silero`: runtime wiring is implemented for CPU-first chunk detection via `silero-vad`; host proof still depends on Torch/Silero runtime availability on the deployment target
 - `faster-whisper`: lazy dependency/model init boundary in place; full streaming transcription wiring still pending
-- `kokoro`: lazy dependency boundary in place; full synthesis wiring still pending
+- `kokoro`: runtime synthesis wiring is implemented for `pcm_s16le` output; host proof still depends on Kokoro package/runtime availability on the deployment target. On Python 3.13 hosts, use the relaxed `kokoro>=0.7.16,<1.0` packaging range rather than assuming only `0.9.x` is viable.
 - `openclaw-gateway`: real HTTP integration implemented
 
 ## OpenClaw bridge

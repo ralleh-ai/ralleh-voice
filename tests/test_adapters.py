@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import struct
 import sys
 import types
 
@@ -26,7 +28,6 @@ def test_adapter_factory_defaults_are_deterministic(monkeypatch):
 @pytest.mark.parametrize(
     "env_name,env_value,component,expected_code,module_to_block",
     [
-        ("RALLEH_VOICE_ADAPTER_VAD", "silero", "vad", "MISSING_DEPENDENCY", "torch"),
         (
             "RALLEH_VOICE_ADAPTER_STT",
             "faster-whisper",
@@ -76,6 +77,112 @@ def test_real_adapter_failures_are_structured(
     payload = exc.value.to_payload()
     assert payload["code"] == expected_code
     assert payload["component"] == component
+
+
+def test_silero_requires_torch(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setitem(sys.modules, "torch", None)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(bundle.vad.detect_speech(b"\x00\x00\x01\x00"))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "MISSING_DEPENDENCY"
+    assert payload["component"] == "vad"
+
+
+def test_silero_requires_package(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(set_num_threads=lambda n: None, from_numpy=lambda arr: arr))
+    monkeypatch.setitem(sys.modules, "silero_vad", None)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(bundle.vad.detect_speech(b"\x00\x00\x01\x00"))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "MISSING_DEPENDENCY"
+    assert payload["component"] == "vad"
+
+
+def test_silero_rejects_bad_sample_rate(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setenv("RALLEH_VOICE_SILERO_SAMPLE_RATE", "11025")
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(set_num_threads=lambda n: None, from_numpy=lambda arr: arr))
+    monkeypatch.setitem(
+        sys.modules,
+        "silero_vad",
+        types.SimpleNamespace(load_silero_vad=lambda: object(), get_speech_timestamps=lambda *args, **kwargs: []),
+    )
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(bundle.vad.detect_speech(b"\x00\x00\x01\x00"))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "CONFIG_ERROR"
+    assert payload["component"] == "vad"
+
+
+def test_silero_detects_speech(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setenv("RALLEH_VOICE_SILERO_SAMPLE_RATE", "16000")
+
+    class FakeArray:
+        def astype(self, _dtype):
+            return self
+        def __truediv__(self, _value):
+            return self
+
+    fake_numpy = types.SimpleNamespace(int16="int16", float32="float32", frombuffer=lambda data, dtype=None: FakeArray())
+    fake_torch = types.SimpleNamespace(set_num_threads=lambda n: None, from_numpy=lambda arr: arr)
+    fake_silero = types.SimpleNamespace(
+        load_silero_vad=lambda: object(),
+        get_speech_timestamps=lambda audio, model, **kwargs: [{"start": 0, "end": 10}],
+    )
+    monkeypatch.setitem(sys.modules, "numpy", fake_numpy)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "silero_vad", fake_silero)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    out = asyncio.run(bundle.vad.detect_speech(b"\x00\x00\x01\x00" * 8))
+    assert out is True
+
+
+def test_silero_detects_silence(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setenv("RALLEH_VOICE_SILERO_SAMPLE_RATE", "16000")
+
+    class FakeArray:
+        def astype(self, _dtype):
+            return self
+        def __truediv__(self, _value):
+            return self
+
+    fake_numpy = types.SimpleNamespace(int16="int16", float32="float32", frombuffer=lambda data, dtype=None: FakeArray())
+    fake_torch = types.SimpleNamespace(set_num_threads=lambda n: None, from_numpy=lambda arr: arr)
+    fake_silero = types.SimpleNamespace(
+        load_silero_vad=lambda: object(),
+        get_speech_timestamps=lambda audio, model, **kwargs: [],
+    )
+    monkeypatch.setitem(sys.modules, "numpy", fake_numpy)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "silero_vad", fake_silero)
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    out = asyncio.run(bundle.vad.detect_speech(b"\x00\x00\x01\x00" * 8))
+    assert out is False
 
 
 def test_faster_whisper_requires_16khz(monkeypatch):
@@ -188,6 +295,74 @@ def test_faster_whisper_empty_transcript_is_structured(monkeypatch):
     payload = exc.value.to_payload()
     assert payload["code"] == "EMPTY_TRANSCRIPT"
     assert payload["component"] == "stt"
+
+
+def test_kokoro_tts_synthesizes_pcm(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "pcm_s16le")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_LANG_CODE", "a")
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    class FakeAudio:
+        def tolist(self):
+            return [0.0, 0.5, -0.5, 1.0]
+
+    class FakePipeline:
+        def __init__(self, lang_code):
+            assert lang_code == "a"
+        def __call__(self, text, voice):
+            assert text == "hello world"
+            assert voice == cfg.kokoro_voice
+            return iter([("gs", "ps", FakeAudio())])
+
+    monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=FakePipeline))
+
+    out = asyncio.run(_collect(bundle.tts.synthesize_stream(" hello   world ")))
+    assert len(out) == 1
+    assert len(out[0]) == 8
+    samples = struct.unpack("<4h", out[0])
+    assert samples[0] == 0
+    assert samples[3] == 32767
+
+
+def test_silero_rejects_odd_length_pcm(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_VAD", "silero")
+    monkeypatch.setenv("RALLEH_VOICE_SILERO_SAMPLE_RATE", "16000")
+    monkeypatch.setitem(sys.modules, "numpy", types.SimpleNamespace(int16="int16", float32="float32", frombuffer=lambda data, dtype=None: data))
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(set_num_threads=lambda n: None, from_numpy=lambda arr: arr))
+    monkeypatch.setitem(
+        sys.modules,
+        "silero_vad",
+        types.SimpleNamespace(load_silero_vad=lambda: object(), get_speech_timestamps=lambda *args, **kwargs: []),
+    )
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(bundle.vad.detect_speech(b"\x00"))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "BAD_AUDIO_CHUNK"
+    assert payload["component"] == "vad"
+
+
+def test_kokoro_tts_rejects_unsupported_output_format(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "wav")
+    monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=lambda lang_code: object()))
+
+    cfg = load_settings()
+    bundle = build_adapters(cfg)
+
+    with pytest.raises(AdapterError) as exc:
+        asyncio.run(_consume(bundle.tts.synthesize_stream("hello")))
+
+    payload = exc.value.to_payload()
+    assert payload["code"] == "CONFIG_ERROR"
+    assert payload["component"] == "tts"
 
 
 async def _collect(stream):

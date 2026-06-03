@@ -86,6 +86,7 @@ class Settings:
     openclaw_gateway_timeout_ms: int = 10000
     openclaw_bridge_prompt_max_chars: int = 12000
     kokoro_voice: str = "af_bella"
+    kokoro_lang_code: str = "a"
     audio_sample_rate: int = 16000
     adapter_vad: str = "deterministic"
     adapter_stt: str = "deterministic"
@@ -214,6 +215,7 @@ def load_settings() -> Settings:
             "RALLEH_VOICE_OPENCLAW_BRIDGE_PROMPT_MAX_CHARS", 12000, 1
         ),
         kokoro_voice=os.getenv("RALLEH_VOICE_KOKORO_VOICE", "af_bella"),
+        kokoro_lang_code=os.getenv("RALLEH_VOICE_KOKORO_LANG_CODE", "a").strip() or "a",
         audio_sample_rate=int(os.getenv("RALLEH_VOICE_AUDIO_SAMPLE_RATE", "16000")),
         adapter_vad=_env_choice("RALLEH_VOICE_ADAPTER_VAD", "deterministic", _ALLOWED_VAD),
         adapter_stt=_env_choice("RALLEH_VOICE_ADAPTER_STT", "deterministic", _ALLOWED_STT),

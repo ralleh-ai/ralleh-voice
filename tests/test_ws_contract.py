@@ -1,5 +1,7 @@
 import base64
+import sys
 import time
+import types
 
 import pytest
 from fastapi.testclient import TestClient
@@ -185,6 +187,41 @@ def test_ws_auth_disabled_dev_path_still_works(monkeypatch):
         ws.send_json({"type": "audio.input.end", "payload": {}})
         out = [ws.receive_json() for _ in range(4)]
         assert [item["type"] for item in out] == ["stt.final", "agent.reply", "audio.output.chunk", "session.done"]
+
+
+def test_ws_kokoro_emits_base64_pcm_chunk(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "off")
+    monkeypatch.setenv("RALLEH_VOICE_ADAPTER_TTS", "kokoro")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_OUTPUT_FORMAT", "pcm_s16le")
+    monkeypatch.setenv("RALLEH_VOICE_KOKORO_SAMPLE_RATE", "24000")
+
+    class FakeAudio:
+        def tolist(self):
+            return [0.0, 0.25, -0.25, 1.0]
+
+    class FakePipeline:
+        def __init__(self, lang_code):
+            assert lang_code == "a"
+        def __call__(self, text, voice):
+            return iter([("gs", "ps", FakeAudio())])
+
+    monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=FakePipeline))
+
+    app = app_module.create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        pcm = base64.b64encode(b"hello world").decode("ascii")
+        ws.send_json({"type": "audio.input.chunk", "payload": {"pcm_b64": pcm}})
+        ws.send_json({"type": "audio.input.end", "payload": {}})
+
+        events = [ws.receive_json() for _ in range(4)]
+        audio = events[2]
+        assert audio["type"] == "audio.output.chunk"
+        assert audio["payload"]["encoding"] == "base64-pcm_s16le"
+        assert audio["payload"]["sample_rate"] == 24000
+        assert base64.b64decode(audio["payload"]["chunk"])
 
 
 def test_ws_auth_enabled_missing_token_blocks_audio(monkeypatch):

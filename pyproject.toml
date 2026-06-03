@@ -25,16 +25,18 @@ stt = [
   "faster-whisper>=1.0,<2.0"
 ]
 tts = [
-  "kokoro>=0.9,<1.0"
+  "kokoro>=0.7.16,<1.0"
 ]
 vad = [
-  "torch>=2.3,<3.0"
+  "torch>=2.3,<3.0",
+  "silero-vad>=6.0,<7.0"
 ]
 voice = [
   "torch>=2.3,<3.0",
+  "silero-vad>=6.0,<7.0",
   "numpy>=1.26,<3.0",
   "faster-whisper>=1.0,<2.0",
-  "kokoro>=0.9,<1.0"
+  "kokoro>=0.7.16,<1.0"
 ]
 redis = [
   "redis>=5.0,<6.0"

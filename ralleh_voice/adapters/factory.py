@@ -111,5 +111,6 @@ def _build_tts(cfg: Settings) -> TTSAdapter:
             voice=cfg.kokoro_voice,
             sample_rate=cfg.kokoro_sample_rate,
             output_format=cfg.kokoro_output_format,
+            lang_code=cfg.kokoro_lang_code,
         )
     raise ValueError(f"Unsupported TTS adapter: {cfg.adapter_tts}")
