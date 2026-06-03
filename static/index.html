@@ -3,62 +3,304 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ralleh-voice browser skeleton</title>
+  <title>Ralleh Voice MVP (browser)</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 860px; }
-    button { margin-right: .5rem; }
-    pre { background: #111; color: #8f8; padding: 1rem; min-height: 240px; overflow: auto; }
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, sans-serif;
+    }
+    body { margin: 1rem; max-width: 920px; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    button { padding: 0.55rem 0.85rem; }
+    button:disabled { opacity: 0.6; }
+    .status { padding: 0.5rem 0.75rem; border-radius: 0.4rem; border: 1px solid #8886; margin-bottom: 1rem; }
+    .log {
+      border: 1px solid #8886;
+      border-radius: 0.4rem;
+      padding: 0.75rem;
+      min-height: 260px;
+      max-height: 460px;
+      overflow: auto;
+      background: #00000015;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85rem;
+    }
+    .hint { font-size: 0.9rem; opacity: 0.85; }
   </style>
 </head>
 <body>
-  <h1>ralleh-voice browser skeleton</h1>
-  <p>
-    This client is a placeholder to validate browser↔gateway WebSocket contracts.
-    It does <strong>not</strong> yet stream real PCM or play synthesized audio.
+  <h1>Ralleh Voice MVP (Phase 1)</h1>
+  <p class="hint">
+    Browser microphone capture + WebSocket chunk streaming.
+    Current server response audio is a base64-text placeholder (not playable PCM yet).
   </p>
 
-  <div>
+  <div id="status" class="status">State: disconnected</div>
+
+  <div class="row">
     <button id="connect">Connect</button>
-    <button id="hello">Send session.hello</button>
-    <button id="turn">Send fake audio turn</button>
-    <button id="cancel">Send cancel</button>
+    <button id="disconnect" disabled>Disconnect</button>
+    <button id="startMic" disabled>Start mic</button>
+    <button id="stopMic" disabled>Stop mic (send audio.input.end)</button>
+    <button id="cancel" disabled>Cancel / barge-in</button>
   </div>
 
-  <h2>Log</h2>
-  <pre id="log"></pre>
+  <div class="row">
+    <label>Chunk ms: <input id="chunkMs" type="number" min="80" max="1000" step="20" value="240" /></label>
+    <label>Reconnect: <input id="autoReconnect" type="checkbox" checked /></label>
+  </div>
+
+  <h2>Transcript / reply log</h2>
+  <div id="log" class="log"></div>
 
   <script>
-    const logEl = document.getElementById('log');
     const wsPath = '/v1/ws/voice';
-    let ws;
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
 
-    function log(line) {
+    const connectBtn = document.getElementById('connect');
+    const disconnectBtn = document.getElementById('disconnect');
+    const startMicBtn = document.getElementById('startMic');
+    const stopMicBtn = document.getElementById('stopMic');
+    const cancelBtn = document.getElementById('cancel');
+    const autoReconnectEl = document.getElementById('autoReconnect');
+    const chunkMsEl = document.getElementById('chunkMs');
+
+    let ws = null;
+    let reconnectTimer = null;
+    let reconnectAttempt = 0;
+    let manuallyDisconnected = false;
+
+    let mediaStream = null;
+    let audioContext = null;
+    let sourceNode = null;
+    let processorNode = null;
+    let currentChunk = [];
+    let flushInterval = null;
+
+    const STATE = {
+      disconnected: 'disconnected',
+      connecting: 'connecting',
+      connected: 'connected',
+      listening: 'listening',
+      processing: 'processing'
+    };
+    let state = STATE.disconnected;
+
+    function setState(next) {
+      state = next;
+      statusEl.textContent = `State: ${state}`;
+
+      const isConnected = ws && ws.readyState === WebSocket.OPEN;
+      connectBtn.disabled = isConnected || state === STATE.connecting;
+      disconnectBtn.disabled = !isConnected;
+      startMicBtn.disabled = !isConnected || state === STATE.listening;
+      stopMicBtn.disabled = state !== STATE.listening;
+      cancelBtn.disabled = !isConnected;
+    }
+
+    function log(prefix, payload) {
+      const ts = new Date().toISOString().slice(11, 19);
+      const line = payload === undefined ? `[${ts}] ${prefix}` : `[${ts}] ${prefix} ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`;
       logEl.textContent += `${line}\n`;
       logEl.scrollTop = logEl.scrollHeight;
     }
 
-    function send(type, payload = {}) {
+    function wsSend(type, payload = {}) {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        log('WS not open');
-        return;
+        log('! WS not open for send', type);
+        return false;
       }
       const msg = { type, payload };
       ws.send(JSON.stringify(msg));
-      log(`> ${JSON.stringify(msg)}`);
+      log('>', msg);
+      return true;
     }
 
-    document.getElementById('connect').onclick = () => {
+    function queueReconnect() {
+      if (manuallyDisconnected || !autoReconnectEl.checked) return;
+      clearTimeout(reconnectTimer);
+      reconnectAttempt += 1;
+      const delay = Math.min(500 * (2 ** (reconnectAttempt - 1)), 5000);
+      log('~ reconnect scheduled', `${delay}ms`);
+      reconnectTimer = setTimeout(connectWs, delay);
+    }
+
+    function connectWs() {
+      manuallyDisconnected = false;
+      setState(STATE.connecting);
+
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}${wsPath}`);
-      ws.onopen = () => log('connected');
-      ws.onmessage = (evt) => log(`< ${evt.data}`);
-      ws.onclose = () => log('closed');
-      ws.onerror = (e) => log(`error: ${e.message || 'unknown'}`);
+
+      ws.onopen = () => {
+        reconnectAttempt = 0;
+        setState(STATE.connected);
+        log('✓ connected');
+        wsSend('session.hello', { client: 'browser-mvp', protocol: 'v0' });
+      };
+
+      ws.onmessage = (evt) => {
+        let parsed;
+        try {
+          parsed = JSON.parse(evt.data);
+        } catch {
+          log('< raw', evt.data);
+          return;
+        }
+        log('<', parsed);
+
+        if (parsed.type === 'stt.final') {
+          log('📝 transcript', parsed.payload?.text || '(empty)');
+          setState(STATE.processing);
+        }
+        if (parsed.type === 'agent.reply') {
+          log('🤖 reply', parsed.payload?.text || '(empty)');
+        }
+        if (parsed.type === 'session.done') {
+          if (state !== STATE.listening) setState(STATE.connected);
+        }
+      };
+
+      ws.onclose = () => {
+        cleanupAudio(false);
+        setState(STATE.disconnected);
+        log('x disconnected');
+        queueReconnect();
+      };
+
+      ws.onerror = () => {
+        log('! websocket error');
+      };
+    }
+
+    async function startMic() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('! connect websocket first');
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        });
+      } catch (err) {
+        log('! mic permission/device error', err?.message || String(err));
+        return;
+      }
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioCtx({ sampleRate: 16000 });
+      await audioContext.resume();
+
+      sourceNode = audioContext.createMediaStreamSource(mediaStream);
+      processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+      currentChunk = [];
+      processorNode.onaudioprocess = (event) => {
+        const input = event.inputBuffer.getChannelData(0);
+        for (let i = 0; i < input.length; i += 1) {
+          const s = Math.max(-1, Math.min(1, input[i]));
+          const int16 = s < 0 ? s * 0x8000 : s * 0x7fff;
+          currentChunk.push(int16 | 0);
+        }
+      };
+
+      sourceNode.connect(processorNode);
+      processorNode.connect(audioContext.destination);
+
+      const chunkMs = Math.max(80, Math.min(1000, Number(chunkMsEl.value) || 240));
+      flushInterval = setInterval(() => flushChunk(), chunkMs);
+
+      setState(STATE.listening);
+      log('🎙️ mic started', { chunkMs, sampleRate: audioContext.sampleRate });
+    }
+
+    function pcm16ToBase64(samples) {
+      const buffer = new ArrayBuffer(samples.length * 2);
+      const view = new DataView(buffer);
+      for (let i = 0; i < samples.length; i += 1) {
+        view.setInt16(i * 2, samples[i], true);
+      }
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+
+    function flushChunk() {
+      if (!currentChunk.length) return;
+      const samples = currentChunk;
+      currentChunk = [];
+      const pcm_b64 = pcm16ToBase64(samples);
+      wsSend('audio.input.chunk', {
+        pcm_b64,
+        sample_rate: 16000,
+        channels: 1,
+        format: 'pcm_s16le'
+      });
+    }
+
+    function cleanupAudio(keepWs = true) {
+      clearInterval(flushInterval);
+      flushInterval = null;
+      currentChunk = [];
+
+      if (processorNode) {
+        processorNode.disconnect();
+        processorNode.onaudioprocess = null;
+      }
+      if (sourceNode) sourceNode.disconnect();
+      if (audioContext) audioContext.close();
+      if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+
+      processorNode = null;
+      sourceNode = null;
+      audioContext = null;
+      mediaStream = null;
+
+      if (keepWs) setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
+    }
+
+    function stopMicAndEndTurn() {
+      flushChunk();
+      cleanupAudio(false);
+      wsSend('audio.input.end', {});
+      setState(STATE.processing);
+      log('🛑 mic stopped; sent audio.input.end');
+    }
+
+    connectBtn.onclick = () => connectWs();
+
+    disconnectBtn.onclick = () => {
+      manuallyDisconnected = true;
+      cleanupAudio(false);
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'user_disconnect');
+      clearTimeout(reconnectTimer);
+      setState(STATE.disconnected);
     };
 
-    document.getElementById('hello').onclick = () => send('session.hello', { client: 'browser-skeleton', protocol: 'v0' });
-    document.getElementById('turn').onclick = () => send('audio.input.chunk', { bytes: 'pretend-audio-bytes' });
-    document.getElementById('cancel').onclick = () => send('session.cancel', { reason: 'user-barge-in' });
+    startMicBtn.onclick = () => startMic();
+    stopMicBtn.onclick = () => stopMicAndEndTurn();
+
+    cancelBtn.onclick = () => {
+      wsSend('session.cancel', { reason: 'barge-in' });
+      cleanupAudio(false);
+      setState((ws && ws.readyState === WebSocket.OPEN) ? STATE.connected : STATE.disconnected);
+      log('⛔ cancel sent');
+    };
+
+    setState(STATE.disconnected);
+    log('Mobile notes: use HTTPS/localhost for mic permission. iOS Safari requires user gesture to start audio context.');
   </script>
 </body>
 </html>

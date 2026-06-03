@@ -1,35 +1,36 @@
-# Security model (foundation)
+# Security model (Phase 1 MVP)
 
 ## Principles
 
 - No secrets committed to git.
-- Manifests and config may include secret references, not secret values.
+- Config may include secret references, not secret values.
 - Localhost/private-network by default.
-- Minimize retained audio/transcript data until policy is explicit.
+- Keep retained voice data minimal by default.
 
 ## Current baseline
 
-- HTTP health endpoints only expose non-sensitive process metadata.
-- WebSocket auth is TODO (do not expose publicly as-is).
+- HTTP health/readiness endpoints expose non-sensitive metadata.
+- WebSocket event parser rejects malformed/unsupported payloads with structured errors.
 - `.env.example` uses `*_REF` patterns for secret indirection.
+- Service is intended to run behind Caddy with TLS termination at edge.
 
 ## Secret handling contract
 
 Expected runtime secret delivery (via provisioning):
-- OpenClaw gateway token (reference only in app config)
-- optional TLS key/cert if terminating in app (currently expect Caddy fronting)
+- OpenClaw gateway token reference/value at runtime only
+- optional TLS secrets if architecture changes (currently Caddy-first)
 
-No secret material should appear in:
+Secret material must never appear in:
 - repository files,
-- logs,
 - test fixtures,
-- generated examples committed to git.
+- logs,
+- committed generated artifacts.
 
 ## Pre-production hardening TODO
 
 - authenticated WebSocket session setup (JWT or signed short-lived token)
 - per-tenant/session authorization checks
-- request rate limiting / abuse controls
-- payload-size limits and malformed-frame handling
-- transcript retention policy + redaction pipeline
-- mTLS/private network enforcement between voice app and OpenClaw bridge
+- request rate limiting + payload-size limits
+- transcript retention + redaction policy
+- private-network or mTLS enforcement between voice app and OpenClaw bridge
+- abuse controls for repeated reconnect/chunk flooding

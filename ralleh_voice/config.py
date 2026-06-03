@@ -4,11 +4,24 @@ from dataclasses import dataclass
 import os
 
 
+_ALLOWED_VAD = {"deterministic", "stub", "silero"}
+_ALLOWED_STT = {"deterministic", "stub", "faster-whisper"}
+_ALLOWED_TTS = {"deterministic", "stub", "kokoro"}
+_ALLOWED_BRIDGE = {"deterministic", "stub", "openclaw-gateway"}
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_choice(name: str, default: str, allowed: set[str]) -> str:
+    value = os.getenv(name, default).strip().lower()
+    if value not in allowed:
+        raise ValueError(f"{name} must be one of {sorted(allowed)}, got: {value}")
+    return value
 
 
 @dataclass(slots=True)
@@ -23,6 +36,13 @@ class Settings:
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
     kokoro_voice: str = "af_bella"
     audio_sample_rate: int = 16000
+    adapter_vad: str = "deterministic"
+    adapter_stt: str = "deterministic"
+    adapter_tts: str = "deterministic"
+    adapter_bridge: str = "deterministic"
+    faster_whisper_model_ref: str = "model:faster-whisper-tiny"
+    silero_model_ref: str = "model:silero-vad"
+    kokoro_model_ref: str = "model:kokoro"
 
 
 def load_settings() -> Settings:
@@ -41,4 +61,15 @@ def load_settings() -> Settings:
         ),
         kokoro_voice=os.getenv("RALLEH_VOICE_KOKORO_VOICE", "af_bella"),
         audio_sample_rate=int(os.getenv("RALLEH_VOICE_AUDIO_SAMPLE_RATE", "16000")),
+        adapter_vad=_env_choice("RALLEH_VOICE_ADAPTER_VAD", "deterministic", _ALLOWED_VAD),
+        adapter_stt=_env_choice("RALLEH_VOICE_ADAPTER_STT", "deterministic", _ALLOWED_STT),
+        adapter_tts=_env_choice("RALLEH_VOICE_ADAPTER_TTS", "deterministic", _ALLOWED_TTS),
+        adapter_bridge=_env_choice(
+            "RALLEH_VOICE_ADAPTER_BRIDGE", "deterministic", _ALLOWED_BRIDGE
+        ),
+        faster_whisper_model_ref=os.getenv(
+            "RALLEH_VOICE_FASTER_WHISPER_MODEL_REF", "model:faster-whisper-tiny"
+        ),
+        silero_model_ref=os.getenv("RALLEH_VOICE_SILERO_MODEL_REF", "model:silero-vad"),
+        kokoro_model_ref=os.getenv("RALLEH_VOICE_KOKORO_MODEL_REF", "model:kokoro"),
     )

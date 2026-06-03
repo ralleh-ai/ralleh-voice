@@ -1,4 +1,4 @@
-# Deploy contract (v0 foundation)
+# Deploy contract (v0.2 phase-1 MVP)
 
 ## Runtime artifact contract
 
@@ -24,6 +24,9 @@ Provisioning or install flow should produce:
 
 - path: `/v1/ws/voice` (configurable)
 - JSON event envelope with `type`, `session_id`, `seq`, `payload`
+- inbound event set: `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
+- outbound event set: `session.ready`, `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
+- malformed/unsupported events must return structured `session.error`
 
 ## Upgrade contract
 

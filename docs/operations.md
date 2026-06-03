@@ -1,34 +1,44 @@
-# Operations runbook (foundation)
+# Operations runbook (Phase 1)
 
 ## Process model
 
 Single API service:
 - FastAPI app with HTTP + WebSocket endpoints
-- static debug client optional (`/static`)
+- static browser MVP client (`/static`)
 
 ## Health checks
 
-- `GET /v1/healthz` => liveness + component mode
-- `GET /v1/readyz` => readiness of process/config
+- `GET /v1/healthz` => liveness + selected adapter modes
+- `GET /v1/readyz` => process/config readiness
 
 ## Logging
 
-Use structured stdout logging (TODO: add explicit logger middleware).
+Current baseline: stdout logs + WebSocket event-level errors.
 
-Recommended immediate production setup:
+Recommended production posture:
 - run behind Caddy,
 - terminate TLS at edge,
 - keep service loopback-bound,
 - expose only reverse-proxy endpoint.
 
-## Suggested SLO starter targets
+## Failure handling
+
+- malformed JSON => `session.error` (`BAD_JSON`)
+- invalid event envelope => `session.error` (`BAD_EVENT`)
+- unsupported inbound type => `session.error` (`UNSUPPORTED_EVENT`)
+- invalid/empty audio chunk => `session.error` (`BAD_AUDIO_CHUNK`)
+- end-turn without chunks => `session.error` (`EMPTY_TURN`)
+- cancel => `session.done` with `reason=cancelled`
+
+## Practical SLO starter targets
 
 - health/readiness endpoint success > 99.9%
 - median WS handshake < 250ms on LAN/VPS
-- turn completion under 2.5s for short prompts (after real models integrated)
+- turn completion under 2.5s for short prompts after real model adapters are integrated
 
-## Failure handling
+## Known MVP limitations
 
-- unsupported events return `session.error`
-- malformed JSON should return structured error (TODO)
-- adapter/model failures should map to consistent error codes (TODO)
+- deterministic adapters only by default (no real speech models)
+- output "audio" is placeholder base64 text chunk, not playable PCM stream
+- no authn/authz and no multitenant isolation yet
+- no persistent transcript storage (intentionally minimal)

@@ -16,10 +16,10 @@ spec:
     transport:
       mode: browser-websocket # browser-websocket | sip (future)
     adapters:
-      vad: stub # stub | silero (future)
-      stt: stub # stub | faster-whisper
-      tts: stub # stub | kokoro
-      openclawBridge: gateway-http
+      vad: deterministic # deterministic | stub | silero (future)
+      stt: deterministic # deterministic | stub | faster-whisper
+      tts: deterministic # deterministic | stub | kokoro
+      openclawBridge: deterministic # deterministic | stub | openclaw-gateway
     secrets:
       - ref: secret:openclaw_gateway_token
         delivery:
@@ -50,7 +50,7 @@ Minimum required secret refs when `enabled=true`:
 4. Caddy config validates (`caddy validate --config /etc/caddy/Caddyfile`)
 5. reverse proxy route returns health endpoint over HTTPS/private ingress
 
-## Non-goals for v0
+## Non-goals for v0.2
 
 - downloading large voice models during core provision by default
 - PSTN phone service setup

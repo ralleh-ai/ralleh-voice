@@ -1,51 +1,34 @@
 # ralleh-voice
 
-Standalone voice gateway/package for the Ralleh stack.
-
-This repo is intentionally **foundation-first**:
-- clear runtime/event contracts,
-- deployment + operations shape,
-- provisioning integration contract,
-- minimal FastAPI + WebSocket skeleton,
-- adapter interfaces/stubs for VAD/STT/OpenClaw bridge/TTS.
-
-It is designed to be:
-1. optional during `ralleh-provision` install,
-2. installable later as an independent app,
-3. browser/mobile voice first.
-
-> Real PSTN phone calls are a **future transport layer** (SIP/Asterisk/FreeSWITCH or GSM/LTE modem hardware), not part of this initial foundation.
+Browser-first voice gateway MVP for the Ralleh stack.
 
 ## Status
 
-This is not a production voice system yet.
+**Phase 1 MVP (implemented):**
+- Browser/mobile mic capture using Web Audio ScriptProcessor fallback
+- PCM16 mono chunking -> base64 -> WebSocket events
+- Inbound event handling for `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
+- Outbound events for `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
+- Structured malformed JSON / bad event errors (no process crash)
+- Turn cancellation foundation with per-turn cancellation state
+- Deterministic local adapters for VAD/STT/bridge/TTS so tests run without model downloads
 
-Implemented now:
-- HTTP health/readiness endpoints,
-- static browser test client placeholder,
-- WebSocket session scaffold + event envelope contract,
-- adapter interfaces and no-op stubs,
-- deploy artifacts (Docker, compose, Caddy, systemd, install script),
-- tests for config, health payload, and event contract shape.
+**Not production telephony:**
+- no PSTN/SIP/telephony ingress in this phase
+- no authn/authz yet
+- no real model-backed STT/TTS wired by default
 
-Deferred (documented TODOs):
-- production VAD,
-- Faster-Whisper integration,
-- OpenClaw bridge transport,
-- Kokoro streaming synthesis,
-- authn/authz and tenant isolation,
-- barge-in tuned behavior + audio buffering strategy.
+## Architecture
 
-## Repo layout
+See `docs/architecture.md` for full details.
 
-- `ralleh_voice/` – Python package
-- `static/` – browser placeholder mic/WebSocket client
-- `docs/` – architecture, security, ops, deploy/provisioning contracts
-- `deploy/` – Docker/Caddy/systemd artifacts
-- `scripts/` – installation/bootstrap helpers
-- `tests/` – lightweight tests
+High level:
 
-## Quick start (local dev)
+```text
+Browser mic -> WS JSON events -> turn buffer -> VAD/STT/bridge/TTS adapters -> output events
+```
+
+## Quickstart (local)
 
 ```bash
 cd ralleh-voice
@@ -60,20 +43,70 @@ Open:
 - API health: `http://127.0.0.1:8099/v1/healthz`
 - Browser client: `http://127.0.0.1:8099/static/`
 
+## Dev and test
+
 Run tests:
 
 ```bash
-pytest
+.venv/bin/python -m pytest -q
+```
+
+Compile sanity check:
+
+```bash
+python3 -m compileall ralleh_voice tests
 ```
 
 ## Configuration
 
-Environment-variable based. See `.env.example` and `ralleh_voice/config.py`.
+Environment variable based (`.env.example`, `ralleh_voice/config.py`).
 
-## Provisioning integration
+Adapter mode hooks are present but currently deterministic by default:
+- `RALLEH_VOICE_ADAPTER_VAD=deterministic|stub|silero`
+- `RALLEH_VOICE_ADAPTER_STT=deterministic|stub|faster-whisper`
+- `RALLEH_VOICE_ADAPTER_TTS=deterministic|stub|kokoro`
+- `RALLEH_VOICE_ADAPTER_BRIDGE=deterministic|stub|openclaw-gateway`
 
-See `docs/provisioning-integration.md` for optional `spec.voice` manifest shape and generated artifact/verification expectations.
+Real adapter integrations are TODOs documented at boundaries in code/docs.
 
-## License
+## Deployment posture
 
-MIT (to be finalized with project policy if needed).
+**Caddy-first**, loopback-bound app service.
+
+Artifacts:
+- `deploy/caddy/ralleh-voice.caddy`
+- `deploy/systemd/ralleh-voice.service`
+- `deploy/Dockerfile`
+- `deploy/docker-compose.yml`
+
+See `docs/deploy-contract.md`, `docs/operations.md`, and `docs/provisioning-integration.md`.
+
+## Security posture
+
+See `docs/security.md` and `SECURITY.md`.
+
+Current repo policy:
+- no secrets in git
+- `.env` ignored
+- deterministic local adapters for testability
+
+## Roadmap (next slices)
+
+1. AudioWorklet path + jitter buffering + playback improvements
+2. Real Silero/Faster-Whisper/Kokoro adapter wiring behind optional deps
+3. OpenClaw bridge session cancellation propagation
+4. Authenticated WS sessions + rate limits
+5. Telephony transport adapters (separate phase, explicit non-goal here)
+
+## Honest non-goals (for this phase)
+
+- PSTN/SIP production calling
+- high-availability multi-node media routing
+- full compliance/PII retention stack
+
+## Contributing & governance
+
+- Contribution guide: `CONTRIBUTING.md`
+- Changelog: `CHANGELOG.md`
+- Security reporting: `SECURITY.md`
+- License: `LICENSE` (MIT)
