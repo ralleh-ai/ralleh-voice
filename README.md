@@ -125,7 +125,7 @@ git diff --check
 After a fresh install or service restart, run the smoke checker against the deployed instance:
 
 ```bash
-python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
+.venv/bin/python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
 ```
 
 What it verifies:
@@ -146,12 +146,13 @@ Examples:
 
 ```bash
 # direct loopback service check
-python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
+.venv/bin/python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099
 
 # public Caddy ingress mounted under /voice
-python3 scripts/smoke_check.py --base-url https://voice.example.com/voice
+.venv/bin/python3 scripts/smoke_check.py --base-url https://voice.example.com/voice
 ```
 
+For installed deployments, prefer the app virtualenv interpreter so the smoke checker uses the packaged dependencies.
 This script is intended to be the first confidence check after installation on a fresh box.
 It is expected to work with the default install, without requiring a separate dev-only dependency step.
 
