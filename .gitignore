@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build/package artifacts
+build/
+dist/
+*.egg-info/
+
+# Runtime artifacts
+.env
+.env.*
+!.env.example
+logs/
+*.log
+*.pid
+
+# Audio and model artifacts (keep out of git)
+models/
+recordings/
+cache/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store

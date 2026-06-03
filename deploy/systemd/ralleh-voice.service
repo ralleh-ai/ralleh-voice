@@ -1,0 +1,22 @@
+[Unit]
+Description=Ralleh Voice Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/ralleh/ralleh-voice
+EnvironmentFile=/etc/ralleh-voice/ralleh-voice.env
+ExecStart=/opt/ralleh/ralleh-voice/.venv/bin/uvicorn ralleh_voice.app:app --host ${RALLEH_VOICE_HOST} --port ${RALLEH_VOICE_PORT}
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/ralleh-voice
+
+[Install]
+WantedBy=multi-user.target

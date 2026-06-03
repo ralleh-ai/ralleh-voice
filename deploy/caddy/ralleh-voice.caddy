@@ -1,0 +1,14 @@
+# Caddy route snippet for Ralleh Voice.
+# Include/import this inside the site block that terminates TLS for the client.
+# Example:
+# voice.example.com {
+#   import /opt/ralleh/ralleh-voice/deploy/caddy/ralleh-voice.caddy
+# }
+
+handle_path /voice/* {
+	reverse_proxy 127.0.0.1:8099
+}
+
+handle /voice {
+	redir /voice/ 308
+}

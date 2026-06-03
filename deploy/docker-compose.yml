@@ -1,0 +1,11 @@
+services:
+  ralleh-voice:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ralleh-voice
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "127.0.0.1:8099:8099"

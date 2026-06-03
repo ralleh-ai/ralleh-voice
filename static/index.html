@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ralleh-voice browser skeleton</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 860px; }
+    button { margin-right: .5rem; }
+    pre { background: #111; color: #8f8; padding: 1rem; min-height: 240px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>ralleh-voice browser skeleton</h1>
+  <p>
+    This client is a placeholder to validate browser↔gateway WebSocket contracts.
+    It does <strong>not</strong> yet stream real PCM or play synthesized audio.
+  </p>
+
+  <div>
+    <button id="connect">Connect</button>
+    <button id="hello">Send session.hello</button>
+    <button id="turn">Send fake audio turn</button>
+    <button id="cancel">Send cancel</button>
+  </div>
+
+  <h2>Log</h2>
+  <pre id="log"></pre>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const wsPath = '/v1/ws/voice';
+    let ws;
+
+    function log(line) {
+      logEl.textContent += `${line}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function send(type, payload = {}) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('WS not open');
+        return;
+      }
+      const msg = { type, payload };
+      ws.send(JSON.stringify(msg));
+      log(`> ${JSON.stringify(msg)}`);
+    }
+
+    document.getElementById('connect').onclick = () => {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}${wsPath}`);
+      ws.onopen = () => log('connected');
+      ws.onmessage = (evt) => log(`< ${evt.data}`);
+      ws.onclose = () => log('closed');
+      ws.onerror = (e) => log(`error: ${e.message || 'unknown'}`);
+    };
+
+    document.getElementById('hello').onclick = () => send('session.hello', { client: 'browser-skeleton', protocol: 'v0' });
+    document.getElementById('turn').onclick = () => send('audio.input.chunk', { bytes: 'pretend-audio-bytes' });
+    document.getElementById('cancel').onclick = () => send('session.cancel', { reason: 'user-barge-in' });
+  </script>
+</body>
+</html>
