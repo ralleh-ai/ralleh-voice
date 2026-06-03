@@ -1,4 +1,4 @@
-# Deploy contract (v0.2.1 phase-3 OpenClaw bridge)
+# Deploy contract (v0.3.0 phase-4 hardening)
 
 ## Runtime artifact contract
 
@@ -26,14 +26,21 @@ Provisioning or install flow should produce:
 - path: `/v1/ws/voice` (configurable)
 - JSON event envelope with `type`, `session_id`, `seq`, `payload`
 - inbound event set: `session.hello`, `audio.input.chunk`, `audio.input.end`, `session.cancel`
-- outbound event set: `session.ready`, `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
+- outbound event set: `session.ready`, `stt.partial`, `stt.final`, `agent.reply`, `audio.output.chunk`, `session.done`, `session.error`
 - malformed/unsupported events must return structured `session.error`
 - auth mode:
   - `RALLEH_VOICE_WS_AUTH_MODE=off` (default dev): no auth token required
   - `RALLEH_VOICE_WS_AUTH_MODE=shared-secret`: client must send `payload.auth_token` during `session.hello` before any audio input
-- failed auth returns `session.error` (`AUTH_FAILED`) then socket close
+  - `RALLEH_VOICE_WS_AUTH_MODE=signed-token`: client must send signed token with required claims (`iat`,`exp`,`sid`,`clt`) and optional issuer/audience constraints
+- failed auth returns `session.error` (structured auth codes) then socket close
 - when auth is required, audio before hello/auth returns `session.error` (`AUTH_REQUIRED`)
-- in-process rate limits emit `session.error` (`RATE_LIMITED`) with metadata; current implementation is one-process only
+- limiter backend:
+  - `RALLEH_VOICE_WS_RATE_LIMIT_BACKEND=memory` (default): one-process limiter
+  - `RALLEH_VOICE_WS_RATE_LIMIT_BACKEND=redis`: distributed fixed-window limiter with atomic Lua increments
+  - if Redis is unavailable, limiter degrades to memory with explicit metadata
+- processing mode:
+  - `RALLEH_VOICE_WS_PROCESSING_MODE=buffered` retains legacy `audio.input.end` buffered turn behavior
+  - `RALLEH_VOICE_WS_PROCESSING_MODE=streaming` starts turn processing at first chunk and still finalizes on `audio.input.end`
 
 ## Upgrade contract
 

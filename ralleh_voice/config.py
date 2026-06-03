@@ -8,7 +8,9 @@ _ALLOWED_VAD = {"deterministic", "stub", "silero"}
 _ALLOWED_STT = {"deterministic", "stub", "faster-whisper"}
 _ALLOWED_TTS = {"deterministic", "stub", "kokoro"}
 _ALLOWED_BRIDGE = {"deterministic", "stub", "openclaw-gateway"}
-_ALLOWED_WS_AUTH_MODE = {"off", "shared-secret"}
+_ALLOWED_WS_AUTH_MODE = {"off", "shared-secret", "signed-token"}
+_ALLOWED_WS_PROCESSING_MODE = {"buffered", "streaming"}
+_ALLOWED_WS_RATE_LIMIT_BACKEND = {"memory", "redis"}
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -33,6 +35,19 @@ def _env_int_min(name: str, default: int, minimum: int) -> int:
     return value
 
 
+def _env_int_min_alias(primary: str, aliases: tuple[str, ...], default: int, minimum: int) -> int:
+    for key in (primary, *aliases):
+        raw = os.getenv(key)
+        if raw is not None:
+            value = int(raw)
+            if value < minimum:
+                raise ValueError(f"{key} must be >= {minimum}, got: {value}")
+            return value
+    if default < minimum:
+        raise ValueError(f"{primary} default must be >= {minimum}, got: {default}")
+    return default
+
+
 @dataclass(slots=True)
 class Settings:
     env: str = "dev"
@@ -48,8 +63,20 @@ class Settings:
     ws_auth_mode: str = "off"
     ws_auth_token_ref: str = "secret:ws_session_shared_secret"
     ws_auth_token_env_var: str = "RALLEH_VOICE_WS_AUTH_TOKEN"
-    ws_rate_limit_events_per_minute: int = 600
-    ws_rate_limit_audio_bytes_per_minute: int = 8388608
+    ws_auth_signing_key_ref: str = "secret:ws_session_signing_key"
+    ws_auth_signing_key_env_var: str = "RALLEH_VOICE_WS_AUTH_SIGNING_KEY"
+    ws_auth_token_ttl_seconds: int = 120
+    ws_auth_token_issuer: str = ""
+    ws_auth_token_audience: str = ""
+    ws_processing_mode: str = "buffered"
+    ws_streaming_max_pending_chunks: int = 128
+    ws_rate_limit_backend: str = "memory"
+    ws_rate_limit_window_seconds: int = 60
+    ws_rate_limit_events_per_window: int = 600
+    ws_rate_limit_audio_bytes_per_window: int = 8388608
+    ws_rate_limit_redis_url: str = "redis://127.0.0.1:6379/0"
+    ws_rate_limit_redis_key_prefix: str = "ralleh:voice:ratelimit"
+    ws_rate_limit_redis_timeout_ms: int = 200
     openclaw_gateway_url: str = "http://127.0.0.1:18789"
     openclaw_token_ref: str = "secret:openclaw_gateway_token"
     openclaw_gateway_token_env_var: str = "RALLEH_VOICE_OPENCLAW_GATEWAY_TOKEN"
@@ -92,6 +119,15 @@ def _validate_settings(cfg: Settings) -> Settings:
                 f"{token_env_var} must be set to a non-empty token when RALLEH_VOICE_WS_AUTH_MODE=shared-secret"
             )
 
+    if cfg.ws_auth_mode == "signed-token":
+        signing_env_var = cfg.ws_auth_signing_key_env_var.strip()
+        if not signing_env_var:
+            raise ValueError("RALLEH_VOICE_WS_AUTH_SIGNING_KEY_ENV_VAR must be non-empty when signed-token auth is enabled")
+        if not os.getenv(signing_env_var, "").strip():
+            raise ValueError(
+                f"{signing_env_var} must be set to a non-empty key when RALLEH_VOICE_WS_AUTH_MODE=signed-token"
+            )
+
     return cfg
 
 
@@ -116,11 +152,43 @@ def load_settings() -> Settings:
         ws_auth_token_env_var=os.getenv(
             "RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR", "RALLEH_VOICE_WS_AUTH_TOKEN"
         ),
-        ws_rate_limit_events_per_minute=_env_int_min(
-            "RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE", 600, 1
+        ws_auth_signing_key_ref=os.getenv(
+            "RALLEH_VOICE_WS_AUTH_SIGNING_KEY_REF", "secret:ws_session_signing_key"
         ),
-        ws_rate_limit_audio_bytes_per_minute=_env_int_min(
-            "RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE", 8388608, 1
+        ws_auth_signing_key_env_var=os.getenv(
+            "RALLEH_VOICE_WS_AUTH_SIGNING_KEY_ENV_VAR", "RALLEH_VOICE_WS_AUTH_SIGNING_KEY"
+        ),
+        ws_auth_token_ttl_seconds=_env_int_min("RALLEH_VOICE_WS_AUTH_TOKEN_TTL_SECONDS", 120, 1),
+        ws_auth_token_issuer=os.getenv("RALLEH_VOICE_WS_AUTH_TOKEN_ISSUER", ""),
+        ws_auth_token_audience=os.getenv("RALLEH_VOICE_WS_AUTH_TOKEN_AUDIENCE", ""),
+        ws_processing_mode=_env_choice(
+            "RALLEH_VOICE_WS_PROCESSING_MODE", "buffered", _ALLOWED_WS_PROCESSING_MODE
+        ),
+        ws_streaming_max_pending_chunks=_env_int_min(
+            "RALLEH_VOICE_WS_STREAMING_MAX_PENDING_CHUNKS", 128, 1
+        ),
+        ws_rate_limit_backend=_env_choice(
+            "RALLEH_VOICE_WS_RATE_LIMIT_BACKEND", "memory", _ALLOWED_WS_RATE_LIMIT_BACKEND
+        ),
+        ws_rate_limit_window_seconds=_env_int_min("RALLEH_VOICE_WS_RATE_LIMIT_WINDOW_SECONDS", 60, 1),
+        ws_rate_limit_events_per_window=_env_int_min_alias(
+            "RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_WINDOW",
+            ("RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE",),
+            600,
+            1,
+        ),
+        ws_rate_limit_audio_bytes_per_window=_env_int_min_alias(
+            "RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_WINDOW",
+            ("RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE",),
+            8388608,
+            1,
+        ),
+        ws_rate_limit_redis_url=os.getenv("RALLEH_VOICE_WS_RATE_LIMIT_REDIS_URL", "redis://127.0.0.1:6379/0"),
+        ws_rate_limit_redis_key_prefix=os.getenv(
+            "RALLEH_VOICE_WS_RATE_LIMIT_REDIS_KEY_PREFIX", "ralleh:voice:ratelimit"
+        ),
+        ws_rate_limit_redis_timeout_ms=_env_int_min(
+            "RALLEH_VOICE_WS_RATE_LIMIT_REDIS_TIMEOUT_MS", 200, 1
         ),
         openclaw_gateway_url=os.getenv(
             "RALLEH_VOICE_OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789"

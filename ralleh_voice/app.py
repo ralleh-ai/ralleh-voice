@@ -4,18 +4,19 @@ import asyncio
 import base64
 import binascii
 import json
-import uuid
-from collections import deque
-from dataclasses import dataclass, field
 import os
 import secrets
 import time
-from typing import Any
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .adapters import build_adapters
+from .auth_tokens import AuthTokenError, verify_signed_session_token
 from .config import Settings, load_settings
 from .events import (
     EVENT_AGENT_REPLY,
@@ -28,12 +29,13 @@ from .events import (
     EVENT_HELLO,
     EVENT_READY,
     EVENT_TRANSCRIPT_FINAL,
+    EVENT_TRANSCRIPT_PARTIAL,
     event_envelope,
     parse_client_event,
     structured_error,
 )
-from .adapters import build_adapters
-from .pipeline import PipelineAdapterFailure, PipelineCancelled, TurnState, VoicePipeline
+from .pipeline import PipelineAdapterFailure, PipelineCancelled, TurnOutput, TurnState, VoicePipeline
+from .rate_limits import RateLimitResult, build_rate_limiter
 
 
 @dataclass(slots=True)
@@ -48,8 +50,11 @@ class SessionState:
     hello_received: bool = False
     auth_ok: bool = False
     auth_mode: str = "off"
+    auth_identity: str = "anonymous"
     client_label: str = "unknown"
     connected_at_ms: int = 0
+    stream_queue: asyncio.Queue[bytes | None] | None = None
+    stream_pending_chunks: int = 0
 
     def next(self) -> int:
         seq = self.next_seq
@@ -57,46 +62,12 @@ class SessionState:
         return seq
 
 
-@dataclass(slots=True)
-class SlidingWindowRateLimiter:
-    window_seconds: int = 60
-    event_limit: int = 600
-    audio_bytes_limit: int = 8388608
-    event_timestamps: deque[float] = field(default_factory=deque)
-    audio_chunks: deque[tuple[float, int]] = field(default_factory=deque)
-    audio_bytes_in_window: int = 0
-
-    def _trim(self, now: float) -> None:
-        cutoff = now - self.window_seconds
-        while self.event_timestamps and self.event_timestamps[0] <= cutoff:
-            self.event_timestamps.popleft()
-        while self.audio_chunks and self.audio_chunks[0][0] <= cutoff:
-            _, size = self.audio_chunks.popleft()
-            self.audio_bytes_in_window -= size
-
-    def allow_event(self, now: float) -> tuple[bool, int]:
-        self._trim(now)
-        if len(self.event_timestamps) >= self.event_limit:
-            return False, len(self.event_timestamps)
-        self.event_timestamps.append(now)
-        return True, len(self.event_timestamps)
-
-    def allow_audio_bytes(self, chunk_size: int, now: float) -> tuple[bool, int]:
-        self._trim(now)
-        proposed = self.audio_bytes_in_window + chunk_size
-        if proposed > self.audio_bytes_limit:
-            return False, self.audio_bytes_in_window
-        self.audio_chunks.append((now, chunk_size))
-        self.audio_bytes_in_window = proposed
-        return True, self.audio_bytes_in_window
-
-
 def health_payload() -> dict[str, Any]:
     cfg = load_settings()
     return {
         "service": "ralleh-voice",
         "status": "ok",
-        "version": "0.2.4",
+        "version": "0.3.0",
         "env": cfg.env,
         "components": {
             "vad": cfg.adapter_vad,
@@ -129,6 +100,12 @@ def readiness_payload() -> dict[str, Any]:
         "ready": ready,
         "openclaw_gateway_url": cfg.openclaw_gateway_url,
         "adapters": readiness_by_component,
+        "rate_limits": {
+            "backend": cfg.ws_rate_limit_backend,
+            "window_seconds": cfg.ws_rate_limit_window_seconds,
+            "events_per_window": cfg.ws_rate_limit_events_per_window,
+            "audio_bytes_per_window": cfg.ws_rate_limit_audio_bytes_per_window,
+        },
         "note": "Readiness reports configured adapter readiness; real adapters may require optional deps/runtime model bootstrap.",
     }
 
@@ -174,7 +151,7 @@ def _build_pipeline(cfg: Settings) -> VoicePipeline:
 
 def create_app():
     cfg = load_settings()
-    app = FastAPI(title="ralleh-voice", version="0.2.4")
+    app = FastAPI(title="ralleh-voice", version="0.3.0")
 
     if cfg.static_enabled:
         app.mount("/static", StaticFiles(directory="static", html=True), name="static")
@@ -201,11 +178,7 @@ def create_app():
             connected_at_ms=int(time.time() * 1000),
         )
         pipeline = _build_pipeline(cfg)
-        rate_limiter = SlidingWindowRateLimiter(
-            event_limit=cfg.ws_rate_limit_events_per_minute,
-            audio_bytes_limit=cfg.ws_rate_limit_audio_bytes_per_minute,
-        )
-
+        rate_limiter = build_rate_limiter(cfg)
         seq_lock = asyncio.Lock()
 
         async def send_event(event_type: str, payload: dict[str, Any]) -> None:
@@ -221,8 +194,21 @@ def create_app():
                 payload["turn_id"] = turn_id
             await send_event(EVENT_DONE, payload)
 
-        async def auth_fail_and_close(detail: str) -> None:
-            await send_error("AUTH_FAILED", detail)
+        async def send_rate_limit_error(kind: str, result: RateLimitResult, limit: int) -> None:
+            meta: dict[str, Any] = {
+                "kind": kind,
+                "limit": limit,
+                "observed": result.observed,
+                "window_seconds": cfg.ws_rate_limit_window_seconds,
+                "backend": result.backend,
+            }
+            if result.degraded and result.detail:
+                meta["degraded"] = True
+                meta["detail"] = result.detail
+            await send_error("RATE_LIMITED", "Inbound rate exceeded configured limit", meta=meta)
+
+        async def auth_fail_and_close(code: str, detail: str) -> None:
+            await send_error(code, detail)
             await ws.close(code=1008)
 
         def _extract_auth_token_from_hello(payload: dict[str, Any]) -> str:
@@ -236,6 +222,25 @@ def create_app():
                     return nested_token.strip()
             return ""
 
+        def _identity_key() -> str:
+            if session.auth_ok:
+                return session.auth_identity
+            return f"anon:{session.session_id}"
+
+        async def emit_turn_output(turn: TurnState, result: TurnOutput) -> None:
+            await send_event(EVENT_TRANSCRIPT_FINAL, {"turn_id": turn.turn_id, "text": result.transcript})
+            await send_event(EVENT_AGENT_REPLY, {"turn_id": turn.turn_id, "text": result.reply})
+            for idx, out in enumerate(result.audio_chunks):
+                await send_event(
+                    EVENT_AUDIO_OUT_CHUNK,
+                    {
+                        "turn_id": turn.turn_id,
+                        "index": idx,
+                        "encoding": "base64-text-placeholder",
+                        "chunk": out.decode("utf-8", errors="ignore"),
+                    },
+                )
+
         async def run_buffered_turn(chunks: list[bytes]) -> None:
             if not chunks:
                 await send_error("EMPTY_TURN", "No audio chunks were buffered for this turn")
@@ -245,24 +250,13 @@ def create_app():
             turn = TurnState(turn_id=session.current_turn_id)
             session.current_turn = turn
 
-            async def chunk_iter():
+            async def chunk_iter() -> AsyncIterator[bytes]:
                 for chunk in chunks:
                     yield chunk
 
             try:
                 result = await pipeline.run_turn(chunk_iter(), session_id=session.session_id, state=turn)
-                await send_event(EVENT_TRANSCRIPT_FINAL, {"turn_id": turn.turn_id, "text": result.transcript})
-                await send_event(EVENT_AGENT_REPLY, {"turn_id": turn.turn_id, "text": result.reply})
-                for i, out in enumerate(result.audio_chunks):
-                    await send_event(
-                        EVENT_AUDIO_OUT_CHUNK,
-                        {
-                            "turn_id": turn.turn_id,
-                            "index": i,
-                            "encoding": "base64-text-placeholder",
-                            "chunk": out.decode("utf-8", errors="ignore"),
-                        },
-                    )
+                await emit_turn_output(turn, result)
                 await finish_turn(turn_id=turn.turn_id, reason="turn-complete")
             except PipelineCancelled:
                 await finish_turn(turn_id=turn.turn_id, reason="cancelled")
@@ -277,6 +271,46 @@ def create_app():
                 session.current_turn = None
                 session.turn_task = None
 
+        async def run_streaming_turn(queue: asyncio.Queue[bytes | None]) -> None:
+            session.current_turn_id += 1
+            turn = TurnState(turn_id=session.current_turn_id)
+            session.current_turn = turn
+
+            async def chunk_iter() -> AsyncIterator[bytes]:
+                while True:
+                    item = await queue.get()
+                    if item is None:
+                        break
+                    session.stream_pending_chunks = max(0, session.stream_pending_chunks - 1)
+                    yield item
+
+            try:
+                result = await pipeline.run_turn_streaming(
+                    chunk_iter(),
+                    session_id=session.session_id,
+                    state=turn,
+                    on_partial_transcript=lambda text: send_event(
+                        EVENT_TRANSCRIPT_PARTIAL,
+                        {"turn_id": turn.turn_id, "text": text},
+                    ),
+                )
+                await emit_turn_output(turn, result)
+                await finish_turn(turn_id=turn.turn_id, reason="turn-complete")
+            except PipelineCancelled:
+                await finish_turn(turn_id=turn.turn_id, reason="cancelled")
+            except PipelineAdapterFailure as exc:
+                payload = exc.error.to_payload()
+                await send_error("ADAPTER_FAILURE", payload["detail"], meta=payload)
+                await finish_turn(turn_id=turn.turn_id, reason="error")
+            except Exception:
+                await send_error("PIPELINE_FAILURE", "Internal pipeline failure")
+                await finish_turn(turn_id=turn.turn_id, reason="error")
+            finally:
+                session.current_turn = None
+                session.turn_task = None
+                session.stream_queue = None
+                session.stream_pending_chunks = 0
+
         await send_event(
             EVENT_READY,
             {
@@ -288,10 +322,12 @@ def create_app():
                     "auth_mode": cfg.ws_auth_mode,
                     "authenticated": False,
                     "hello_required_before_audio": cfg.ws_auth_mode != "off",
+                    "processing_mode": cfg.ws_processing_mode,
                     "rate_limits": {
-                        "window_seconds": 60,
-                        "events_per_minute": cfg.ws_rate_limit_events_per_minute,
-                        "audio_bytes_per_minute": cfg.ws_rate_limit_audio_bytes_per_minute,
+                        "backend": rate_limiter.backend,
+                        "window_seconds": cfg.ws_rate_limit_window_seconds,
+                        "events_per_window": cfg.ws_rate_limit_events_per_window,
+                        "audio_bytes_per_window": cfg.ws_rate_limit_audio_bytes_per_window,
                     },
                 },
             },
@@ -300,19 +336,14 @@ def create_app():
         try:
             while True:
                 raw = await ws.receive_text()
-
                 now = time.monotonic()
-                allow_event, observed_events = rate_limiter.allow_event(now)
-                if not allow_event:
-                    await send_error(
-                        "RATE_LIMITED",
-                        "Inbound event rate exceeded configured limit",
-                        meta={
-                            "kind": "events_per_minute",
-                            "limit": cfg.ws_rate_limit_events_per_minute,
-                            "observed": observed_events,
-                            "window_seconds": 60,
-                        },
+
+                event_limit = rate_limiter.allow_event(_identity_key(), now)
+                if not event_limit.allowed:
+                    await send_rate_limit_error(
+                        "events_per_window",
+                        event_limit,
+                        cfg.ws_rate_limit_events_per_window,
                     )
                     continue
 
@@ -344,6 +375,7 @@ def create_app():
 
                     if cfg.ws_auth_mode == "off":
                         session.auth_ok = True
+                        session.auth_identity = f"client:{session.client_label}"
                         await send_event(
                             EVENT_READY,
                             {
@@ -359,20 +391,66 @@ def create_app():
                         )
                         continue
 
-                    expected_token = os.getenv(cfg.ws_auth_token_env_var, "").strip()
                     provided_token = _extract_auth_token_from_hello(payload)
                     if not provided_token:
-                        await auth_fail_and_close("Missing auth token in session.hello payload")
+                        await auth_fail_and_close("AUTH_MISSING_TOKEN", "Missing auth token in session.hello payload")
                         return
 
-                    if not secrets.compare_digest(provided_token, expected_token):
-                        await auth_fail_and_close("Invalid session auth token")
-                        return
+                    if cfg.ws_auth_mode == "shared-secret":
+                        expected_token = os.getenv(cfg.ws_auth_token_env_var, "").strip()
+                        if not secrets.compare_digest(provided_token, expected_token):
+                            await auth_fail_and_close("AUTH_BAD_SIGNATURE", "Invalid session auth token")
+                            return
 
-                    session.auth_ok = True
-                    await send_event(
-                        EVENT_READY,
-                        {
+                        session.auth_ok = True
+                        session.auth_identity = f"client:{session.client_label}"
+                        await send_event(
+                            EVENT_READY,
+                            {
+                                "protocol": "v0",
+                                "status": "ok",
+                                "session": {
+                                    "session_id": session.session_id,
+                                    "client": session.client_label,
+                                    "auth_required": True,
+                                    "auth_mode": cfg.ws_auth_mode,
+                                    "authenticated": True,
+                                    "token_ref": cfg.ws_auth_token_ref,
+                                },
+                            },
+                        )
+                        continue
+
+                    if cfg.ws_auth_mode == "signed-token":
+                        signing_key = os.getenv(cfg.ws_auth_signing_key_env_var, "").strip()
+                        try:
+                            claims = verify_signed_session_token(
+                                provided_token,
+                                key=signing_key,
+                                issuer=cfg.ws_auth_token_issuer.strip() or None,
+                                audience=cfg.ws_auth_token_audience.strip() or None,
+                            )
+                        except AuthTokenError as exc:
+                            code_map = {
+                                "missing_token": "AUTH_MISSING_TOKEN",
+                                "bad_signature": "AUTH_BAD_SIGNATURE",
+                                "expired": "AUTH_EXPIRED",
+                                "config_error": "AUTH_CONFIG_ERROR",
+                                "bad_format": "AUTH_BAD_FORMAT",
+                                "invalid_claim": "AUTH_INVALID_CLAIM",
+                            }
+                            await auth_fail_and_close(code_map.get(exc.reason, "AUTH_FAILED"), exc.detail)
+                            return
+
+                        if session.client_label != "unknown" and claims.clt != session.client_label:
+                            await auth_fail_and_close("AUTH_INVALID_CLAIM", "Token client claim mismatch")
+                            return
+
+                        session.auth_ok = True
+                        session.client_label = claims.clt
+                        session.auth_identity = f"sid:{claims.sid}:clt:{claims.clt}"
+
+                        ack_payload = {
                             "protocol": "v0",
                             "status": "ok",
                             "session": {
@@ -381,21 +459,38 @@ def create_app():
                                 "auth_required": True,
                                 "auth_mode": cfg.ws_auth_mode,
                                 "authenticated": True,
-                                "token_ref": cfg.ws_auth_token_ref,
+                                "token_ref": cfg.ws_auth_signing_key_ref,
+                                "claims": {
+                                    "sid": claims.sid,
+                                    "clt": claims.clt,
+                                    "iat": claims.iat,
+                                    "exp": claims.exp,
+                                },
                             },
-                        },
-                    )
-                    continue
+                        }
+                        if claims.iss is not None:
+                            ack_payload["session"]["claims"]["iss"] = claims.iss
+                        if claims.aud is not None:
+                            ack_payload["session"]["claims"]["aud"] = claims.aud
+
+                        await send_event(EVENT_READY, ack_payload)
+                        continue
 
                 if parsed.event_type == EVENT_CANCEL:
                     if session.current_turn is not None:
                         session.current_turn.cancelled = True
-                        continue
 
                     had_buffered_audio = bool(session.incoming_chunks)
                     session.incoming_chunks.clear()
                     session.incoming_bytes = 0
-                    if had_buffered_audio:
+
+                    if session.stream_queue is not None:
+                        try:
+                            session.stream_queue.put_nowait(None)
+                        except asyncio.QueueFull:
+                            pass
+
+                    if session.turn_task is None and had_buffered_audio:
                         await finish_turn(turn_id=None, reason="cancelled")
                     continue
 
@@ -430,48 +525,72 @@ def create_app():
                         )
                         continue
 
-                    allow_audio, observed_audio = rate_limiter.allow_audio_bytes(len(chunk), now)
-                    if not allow_audio:
+                    audio_limit = rate_limiter.allow_audio_bytes(_identity_key(), len(chunk), now)
+                    if not audio_limit.allowed:
                         session.incoming_chunks.clear()
                         session.incoming_bytes = 0
-                        await send_error(
-                            "RATE_LIMITED",
-                            "Inbound audio rate exceeded configured limit",
-                            meta={
-                                "kind": "audio_bytes_per_minute",
-                                "limit": cfg.ws_rate_limit_audio_bytes_per_minute,
-                                "observed": observed_audio,
-                                "window_seconds": 60,
-                            },
+                        await send_rate_limit_error(
+                            "audio_bytes_per_window",
+                            audio_limit,
+                            cfg.ws_rate_limit_audio_bytes_per_window,
                         )
                         await finish_turn(turn_id=None, reason="rate-limited")
                         continue
 
-                    if len(session.incoming_chunks) >= cfg.ws_max_buffered_chunks:
-                        session.incoming_chunks.clear()
-                        session.incoming_bytes = 0
+                    if cfg.ws_processing_mode == "buffered":
+                        if len(session.incoming_chunks) >= cfg.ws_max_buffered_chunks:
+                            session.incoming_chunks.clear()
+                            session.incoming_bytes = 0
+                            await send_error(
+                                "TURN_BUFFER_OVERFLOW",
+                                "Too many audio chunks buffered for pending turn",
+                                meta={"limit_chunks": cfg.ws_max_buffered_chunks},
+                            )
+                            await finish_turn(turn_id=None, reason="error")
+                            continue
+
+                        next_total = session.incoming_bytes + len(chunk)
+                        if next_total > cfg.ws_max_buffered_audio_bytes:
+                            session.incoming_chunks.clear()
+                            session.incoming_bytes = 0
+                            await send_error(
+                                "TURN_BUFFER_OVERFLOW",
+                                "Buffered audio exceeded configured max size",
+                                meta={"limit_bytes": cfg.ws_max_buffered_audio_bytes},
+                            )
+                            await finish_turn(turn_id=None, reason="error")
+                            continue
+
+                        session.incoming_chunks.append(chunk)
+                        session.incoming_bytes = next_total
+                        continue
+
+                    if session.stream_queue is None:
+                        session.stream_queue = asyncio.Queue(maxsize=cfg.ws_streaming_max_pending_chunks)
+
+                    if session.stream_pending_chunks >= cfg.ws_streaming_max_pending_chunks:
                         await send_error(
                             "TURN_BUFFER_OVERFLOW",
-                            "Too many audio chunks buffered for pending turn",
-                            meta={"limit_chunks": cfg.ws_max_buffered_chunks},
+                            "Streaming queue exceeded configured max pending chunks",
+                            meta={"limit_chunks": cfg.ws_streaming_max_pending_chunks},
                         )
                         await finish_turn(turn_id=None, reason="error")
                         continue
 
-                    next_total = session.incoming_bytes + len(chunk)
-                    if next_total > cfg.ws_max_buffered_audio_bytes:
-                        session.incoming_chunks.clear()
-                        session.incoming_bytes = 0
+                    try:
+                        session.stream_queue.put_nowait(chunk)
+                        session.stream_pending_chunks += 1
+                    except asyncio.QueueFull:
                         await send_error(
                             "TURN_BUFFER_OVERFLOW",
-                            "Buffered audio exceeded configured max size",
-                            meta={"limit_bytes": cfg.ws_max_buffered_audio_bytes},
+                            "Streaming queue is full",
+                            meta={"limit_chunks": cfg.ws_streaming_max_pending_chunks},
                         )
                         await finish_turn(turn_id=None, reason="error")
                         continue
 
-                    session.incoming_chunks.append(chunk)
-                    session.incoming_bytes = next_total
+                    if session.turn_task is None:
+                        session.turn_task = asyncio.create_task(run_streaming_turn(session.stream_queue))
                     continue
 
                 if parsed.event_type == EVENT_AUDIO_END:
@@ -483,19 +602,35 @@ def create_app():
                             await send_error("AUTH_REQUIRED", "Session is not authenticated")
                             continue
 
-                    if session.turn_task is not None:
-                        await send_error("TURN_IN_PROGRESS", "A turn is already running")
+                    if cfg.ws_processing_mode == "buffered":
+                        if session.turn_task is not None:
+                            await send_error("TURN_IN_PROGRESS", "A turn is already running")
+                            continue
+                        chunks = list(session.incoming_chunks)
+                        session.incoming_chunks.clear()
+                        session.incoming_bytes = 0
+                        session.turn_task = asyncio.create_task(run_buffered_turn(chunks))
                         continue
 
-                    chunks = list(session.incoming_chunks)
-                    session.incoming_chunks.clear()
-                    session.incoming_bytes = 0
-                    session.turn_task = asyncio.create_task(run_buffered_turn(chunks))
+                    if session.stream_queue is None:
+                        await send_error("EMPTY_TURN", "No streaming audio chunks were received for this turn")
+                        continue
+
+                    try:
+                        session.stream_queue.put_nowait(None)
+                    except asyncio.QueueFull:
+                        await send_error("TURN_BUFFER_OVERFLOW", "Failed to finalize streaming queue")
+                        await finish_turn(turn_id=None, reason="error")
                     continue
 
         except WebSocketDisconnect:
             if session.current_turn is not None:
                 session.current_turn.cancelled = True
+            if session.stream_queue is not None:
+                try:
+                    session.stream_queue.put_nowait(None)
+                except asyncio.QueueFull:
+                    pass
             if session.turn_task is not None:
                 session.turn_task.cancel()
             return

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable
 
 from .adapters.errors import AdapterError
 from .interfaces import OpenClawBridge, STTAdapter, TTSAdapter, VADAdapter
@@ -84,6 +84,35 @@ class VoicePipeline:
             )
         except AdapterError as exc:
             raise PipelineAdapterFailure(exc) from exc
+
+    async def run_turn_streaming(
+        self,
+        audio_chunks: AsyncIterator[bytes],
+        *,
+        session_id: str,
+        state: TurnState,
+        on_partial_transcript: Callable[[str], Awaitable[None]] | None = None,
+        on_final_transcript: Callable[[str], Awaitable[None]] | None = None,
+        on_reply: Callable[[str], Awaitable[None]] | None = None,
+        on_audio_chunk: Callable[[int, bytes], Awaitable[None]] | None = None,
+    ) -> TurnOutput:
+        output = await self.run_turn(audio_chunks, session_id=session_id, state=state)
+
+        if on_partial_transcript is not None and output.transcript:
+            await on_partial_transcript(output.transcript)
+
+        if on_final_transcript is not None:
+            await on_final_transcript(output.transcript)
+
+        if on_reply is not None:
+            await on_reply(output.reply)
+
+        if on_audio_chunk is not None:
+            for idx, chunk in enumerate(output.audio_chunks):
+                self._ensure_not_cancelled(state)
+                await on_audio_chunk(idx, chunk)
+
+        return output
 
     @staticmethod
     def _ensure_not_cancelled(state: TurnState) -> None:

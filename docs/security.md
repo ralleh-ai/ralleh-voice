@@ -1,4 +1,4 @@
-# Security model (Phase 2 adapter wiring)
+# Security model (Phase 4 production hardening)
 
 ## Principles
 
@@ -15,8 +15,10 @@
 - Inbound WebSocket guardrails enforce max event/chunk/turn-buffer sizes to reduce abuse risk and memory pressure.
 - Unexpected internal pipeline exceptions are redacted to generic `PIPELINE_FAILURE` details.
 - Ingress guardrails bound websocket event size, per-chunk decoded audio size, and per-turn buffered chunks/bytes.
-- Optional shared-secret WebSocket auth mode (`RALLEH_VOICE_WS_AUTH_MODE=shared-secret`) requires `session.hello` token bootstrap before audio is accepted.
-- In-process sliding-window rate limiting covers inbound events/minute and audio bytes/minute with structured `RATE_LIMITED` errors.
+- WebSocket auth mode supports `off`, `shared-secret`, and `signed-token` bootstraps.
+- Signed-token mode verifies HMAC (`HS256`) signature and short-lived claims (`iat`, `exp`, `sid`, `clt`, optional `iss` and `aud`).
+- Sliding-window ingress rate limiting supports `memory` (default) and optional Redis backend with atomic Lua increment checks.
+- Redis backend is optional/lazy; missing dependency/connectivity degrades safely to memory with explicit metadata.
 - `.env.example` uses `*_REF` patterns for secret indirection.
 - Service is intended to run behind Caddy with TLS termination at edge.
 
@@ -35,9 +37,9 @@ Secret material must never appear in:
 
 ## Pre-production hardening TODO
 
-- migrate shared-secret bootstrap to short-lived signed tokens (JWT or equivalent) with rotation and expiry
-- per-tenant/session authorization checks
-- replace process-local limiter with distributed identity/session-aware limiter (Redis or gateway-level)
+- token key rotation workflow (current signed-token contract supports short-lived expiry but no key-id rotation metadata)
+- per-tenant/session authorization checks beyond session bootstrap claims
+- richer limiter semantics (burst + sustained) and tenant quota policy
 - transcript retention + redaction policy
 - private-network or mTLS enforcement between voice app and OpenClaw bridge
 - keep unauthenticated bridge mode disabled unless ingress is strictly private and controlled

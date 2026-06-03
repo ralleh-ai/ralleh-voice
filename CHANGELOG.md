@@ -1,17 +1,18 @@
 ## [Unreleased]
 
 ### Added
-- CORTEX #406: authenticated WebSocket session bootstrap and in-process rate limiting hardening slice.
-- WebSocket auth bootstrap config and contract (`RALLEH_VOICE_WS_AUTH_MODE=off|shared-secret`) with runtime token env-var indirection (`RALLEH_VOICE_WS_AUTH_TOKEN_ENV_VAR`) and token reference metadata (`RALLEH_VOICE_WS_AUTH_TOKEN_REF`).
-- `session.hello` shared-secret authentication path with structured `AUTH_FAILED`/`AUTH_REQUIRED` handling and clean socket close on failed auth.
-- Session-ready metadata now includes auth requirements and configured limiter settings (without exposing token values).
-- In-process 60-second sliding-window rate limiting for inbound event count and decoded audio bytes with structured `RATE_LIMITED` errors.
-- Browser client session token input and explicit websocket error logging for auth/rate-limit feedback.
-- Tests covering auth disabled path, auth required missing token, bad token rejection/redaction, good token success, and both rate-limit paths.
+- CORTEX #407: production-hardening foundation for signed tokens, distributed limiter backend, and lower-buffering streaming turn mode.
+- Signed WebSocket auth mode (`RALLEH_VOICE_WS_AUTH_MODE=signed-token`) with HMAC token verification, short-lived claims, issuer/audience checks, and structured auth failures.
+- Local token utility module/CLI (`python3 -m ralleh_voice.auth_tokens`) to mint/verify signed session tokens using env-var key indirection.
+- Optional distributed limiter backend (`RALLEH_VOICE_WS_RATE_LIMIT_BACKEND=redis`) using atomic Redis Lua increments, with lazy dependency import and safe in-memory degradation.
+- Streaming turn mode (`RALLEH_VOICE_WS_PROCESSING_MODE=streaming`) with bounded pending queue and deterministic `stt.partial` emission.
+- Tests for signed token success/failure/expiry/tamper, limiter memory+redis boundaries, and streaming mode event/cancel behavior.
 
 ### Changed
-- WebSocket audio ingress now requires successful hello/auth when auth mode is enabled.
-- Security/deploy/operations docs updated to document one-process limiter limitation and shared-secret bootstrap posture.
+- Initial/session-ready metadata now includes processing mode and rate-limit backend/window configuration.
+- Rate-limit config migrated to `*_PER_WINDOW` names with compatibility aliases for legacy `*_PER_MINUTE` env vars.
+- Shared-secret path preserved; auth failure codes are now more specific (`AUTH_BAD_SIGNATURE`, `AUTH_MISSING_TOKEN`, etc.).
+- Security/deploy/operations docs updated to reflect signed-token and redis-backed limiter semantics, plus honest streaming limitations.
 
 # Changelog
 

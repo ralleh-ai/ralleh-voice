@@ -167,6 +167,10 @@
         if (parsed.type === 'session.error') {
           log('❌ error', `${parsed.payload?.code || 'ERROR'}: ${parsed.payload?.detail || 'unknown error'}`);
         }
+        if (parsed.type === 'stt.partial') {
+          log('… partial', parsed.payload?.text || '(empty)');
+          setState(STATE.processing);
+        }
         if (parsed.type === 'stt.final') {
           log('📝 transcript', parsed.payload?.text || '(empty)');
           setState(STATE.processing);

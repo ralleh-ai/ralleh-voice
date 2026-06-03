@@ -59,3 +59,30 @@ def test_load_settings_shared_secret_accepts_env_token(monkeypatch):
 
     cfg = load_settings()
     assert cfg.ws_auth_mode == "shared-secret"
+
+
+def test_load_settings_rejects_signed_token_without_key(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "signed-token")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_SIGNING_KEY_ENV_VAR", "RALLEH_VOICE_WS_AUTH_SIGNING_KEY")
+    monkeypatch.delenv("RALLEH_VOICE_WS_AUTH_SIGNING_KEY", raising=False)
+
+    with pytest.raises(ValueError):
+        load_settings()
+
+
+def test_load_settings_signed_token_accepts_key(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_MODE", "signed-token")
+    monkeypatch.setenv("RALLEH_VOICE_WS_AUTH_SIGNING_KEY", "dummy-signing-key")
+
+    cfg = load_settings()
+    assert cfg.ws_auth_mode == "signed-token"
+    assert cfg.ws_auth_signing_key_env_var == "RALLEH_VOICE_WS_AUTH_SIGNING_KEY"
+
+
+def test_load_settings_rate_limit_legacy_alias(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_EVENTS_PER_MINUTE", "321")
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE", "654")
+
+    cfg = load_settings()
+    assert cfg.ws_rate_limit_events_per_window == 321
+    assert cfg.ws_rate_limit_audio_bytes_per_window == 654

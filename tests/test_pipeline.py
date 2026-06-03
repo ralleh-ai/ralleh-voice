@@ -102,3 +102,44 @@ def test_pipeline_wraps_adapter_error():
         asyncio.run(pipeline.run_turn(_iter_chunks([b"hello"]), session_id="sess-err", state=TurnState(turn_id=3)))
 
     assert exc.value.error.code == "MISSING_ENDPOINT"
+
+
+def test_pipeline_streaming_callbacks_order():
+    pipeline = VoicePipeline(
+        vad=DeterministicVAD(),
+        stt=DeterministicSTT(),
+        bridge=DeterministicOpenClawBridge(),
+        tts=DeterministicTTS(),
+    )
+    state = TurnState(turn_id=5)
+    seen: list[str] = []
+
+    async def on_partial(text: str):
+        seen.append(f"partial:{text}")
+
+    async def on_final(text: str):
+        seen.append(f"final:{text}")
+
+    async def on_reply(text: str):
+        seen.append(f"reply:{text}")
+
+    async def on_audio(idx: int, _chunk: bytes):
+        seen.append(f"audio:{idx}")
+
+    result = asyncio.run(
+        pipeline.run_turn_streaming(
+            _iter_chunks([b"hello", b" ", b"world"]),
+            session_id="sess-stream",
+            state=state,
+            on_partial_transcript=on_partial,
+            on_final_transcript=on_final,
+            on_reply=on_reply,
+            on_audio_chunk=on_audio,
+        )
+    )
+
+    assert result.transcript == "hello world"
+    assert seen[0].startswith("partial:hello world")
+    assert seen[1].startswith("final:hello world")
+    assert seen[2].startswith("reply:Ralleh stub reply")
+    assert seen[3] == "audio:0"
