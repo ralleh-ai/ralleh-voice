@@ -27,6 +27,12 @@ Recommended production posture:
 - keep service loopback-bound,
 - expose only reverse-proxy endpoint.
 
+Service-management verification now proven in rehearsal:
+- systemd unit shape validates when installed paths/env file exist
+- service-style start reaches healthy state on loopback
+- restart returns to healthy state cleanly
+- post-restart smoke check succeeds
+
 ## Failure handling
 
 - malformed JSON => `session.error` (`BAD_JSON`)

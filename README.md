@@ -490,6 +490,12 @@ Relevant artifacts:
 - `deploy/Dockerfile`
 - `deploy/docker-compose.yml`
 
+Deployment posture proven in rehearsal so far:
+- clean installed package starts successfully
+- bundled smoke check works with the default install footprint
+- Caddy-fronted `/voice` ingress works for HTTP + WebSocket flow
+- systemd-style service start and restart return to healthy smoke-check state
+
 See:
 - `docs/deploy-contract.md`
 - `docs/operations.md`
