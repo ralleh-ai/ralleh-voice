@@ -27,6 +27,15 @@ models/
 recordings/
 cache/
 
+# Local agent/workspace metadata
+.openclaw/
+AGENTS.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+
 # Editors/OS
 .vscode/
 .idea/
