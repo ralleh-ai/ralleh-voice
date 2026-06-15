@@ -2,7 +2,7 @@
 
 Ralleh Voice includes a small local utility for minting/verifying short-lived WebSocket session tokens.
 
-Module: `ralleh_voice.auth_tokens`
+Console entrypoint: `ralleh-voice-token` (also available as module `ralleh_voice.auth_tokens`).
 
 ## Contract
 
@@ -31,7 +31,7 @@ Mint a short-lived token (2 minutes):
 
 ```bash
 export RALLEH_VOICE_WS_AUTH_SIGNING_KEY='dummy-local-signing-key'
-python3 -m ralleh_voice.auth_tokens mint \
+ralleh-voice-token mint \
   --session-id sess-local-1 \
   --client browser-mvp \
   --ttl 120 \
@@ -42,7 +42,7 @@ python3 -m ralleh_voice.auth_tokens mint \
 Verify token:
 
 ```bash
-python3 -m ralleh_voice.auth_tokens verify \
+ralleh-voice-token verify \
   --token '<paste token>' \
   --issuer ralleh \
   --audience voice

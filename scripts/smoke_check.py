@@ -152,9 +152,6 @@ async def check_ws_turn(ws_url: str, timeout: float, auth_token: str | None, req
                             "type": "audio.input.chunk",
                             "payload": {
                                 "pcm_b64": pcm,
-                                "sample_rate": 16000,
-                                "channels": 1,
-                                "format": "pcm_s16le",
                             },
                         }
                     )

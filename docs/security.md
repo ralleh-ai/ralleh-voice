@@ -11,6 +11,7 @@
 
 - HTTP health/readiness endpoints expose non-sensitive metadata.
 - WebSocket event parser rejects malformed/unsupported payloads with structured errors.
+- Inbound event parser is strict: unknown top-level and payload fields are rejected (`BAD_EVENT`) to reduce protocol smuggling and accidental client drift.
 - Adapter runtime failures are surfaced as structured `ADAPTER_FAILURE` events without leaking token values.
 - Inbound WebSocket guardrails enforce max event/chunk/turn-buffer sizes to reduce abuse risk and memory pressure.
 - Unexpected internal pipeline exceptions are redacted to generic `PIPELINE_FAILURE` details.
@@ -21,6 +22,10 @@
 - Redis backend is optional/lazy; missing dependency/connectivity degrades safely to memory with explicit metadata.
 - `.env.example` uses `*_REF` patterns for secret indirection.
 - Service is intended to run behind Caddy with TLS termination at edge.
+- HTTP responses include baseline hardening headers by default (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cache-Control`).
+- CORS allowlist is explicit (`RALLEH_VOICE_CORS_ALLOW_ORIGINS`) and should match only trusted Control Room origins.
+- Config validation blocks wildcard CORS origins when credentialed CORS is enabled.
+- Optional anonymous limiter identity can incorporate client IP (`RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS=true`) as a secondary anti-abuse signal.
 
 ## Secret handling contract
 
@@ -35,6 +40,9 @@ Secret material must never appear in:
 - logs,
 - committed generated artifacts.
 
+Operational logging guardrail:
+- Keep transcript text, agent replies, and raw/decoded audio chunks out of INFO logs. If debug logging is required for incident response, keep it temporary and scoped.
+
 ## Pre-production hardening TODO
 
 - token key rotation workflow (current signed-token contract supports short-lived expiry but no key-id rotation metadata)
@@ -44,3 +52,9 @@ Secret material must never appear in:
 - private-network or mTLS enforcement between voice app and OpenClaw bridge
 - keep unauthenticated bridge mode disabled unless ingress is strictly private and controlled
 - abuse controls for repeated reconnect/chunk flooding
+
+## Dependency vulnerability auditing posture
+
+- CI runs a blocking `pip-audit` pass on the core runtime/dev/redis footprint.
+- CI also runs an advisory optional-voice baseline audit from `requirements/audit/voice-direct-baseline.txt` using `--no-deps`.
+- The optional pass is intentionally advisory to avoid unstable CI failures from heavyweight or interpreter-sensitive optional model stacks while still surfacing direct-package risk signals.

@@ -22,6 +22,14 @@ SUPPORTED_INBOUND_EVENTS = {
     EVENT_CANCEL,
 }
 
+_ALLOWED_TOP_LEVEL_FIELDS = {"type", "payload"}
+_ALLOWED_PAYLOAD_FIELDS: dict[str, set[str] | None] = {
+    EVENT_HELLO: None,
+    EVENT_AUDIO_IN: {"pcm_b64"},
+    EVENT_AUDIO_END: set(),
+    EVENT_CANCEL: {"reason"},
+}
+
 
 @dataclass(slots=True)
 class VoiceEvent:
@@ -51,6 +59,10 @@ def parse_client_event(raw: str) -> ParseResult:
     if not isinstance(msg, dict):
         raise ValueError("Event must be a JSON object")
 
+    unknown_top_level = set(msg.keys()) - _ALLOWED_TOP_LEVEL_FIELDS
+    if unknown_top_level:
+        raise ValueError(f"Event contains unsupported top-level fields: {sorted(unknown_top_level)}")
+
     event_type = msg.get("type")
     if not isinstance(event_type, str) or not event_type.strip():
         raise ValueError("Event requires string field 'type'")
@@ -63,6 +75,14 @@ def parse_client_event(raw: str) -> ParseResult:
 
     if event_type not in SUPPORTED_INBOUND_EVENTS:
         raise LookupError(f"unsupported type: {event_type}")
+
+    allowed_payload_fields = _ALLOWED_PAYLOAD_FIELDS[event_type]
+    if allowed_payload_fields is not None:
+        unknown_payload_fields = set(payload.keys()) - allowed_payload_fields
+        if unknown_payload_fields:
+            raise ValueError(
+                f"Event '{event_type}' payload contains unsupported fields: {sorted(unknown_payload_fields)}"
+            )
 
     return ParseResult(event_type=event_type, payload=payload)
 

@@ -32,3 +32,63 @@ jobs:
 
       - name: Diff whitespace check
         run: git diff --check
+
+  dependency-audit-core:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install audit tooling + core deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install pip-audit
+          pip install -e .[dev,redis]
+
+      - name: Audit core dependencies (blocking)
+        run: .venv/bin/pip-audit
+
+  dependency-audit-voice-baseline:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install audit tooling
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Audit optional voice direct deps (advisory)
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts
+          .venv/bin/pip-audit \
+            -r requirements/audit/voice-direct-baseline.txt \
+            --no-deps \
+            -f json \
+            -o artifacts/pip-audit-voice-direct.json
+
+      - name: Upload optional voice audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-voice-direct
+          path: artifacts/pip-audit-voice-direct.json
+          if-no-files-found: warn

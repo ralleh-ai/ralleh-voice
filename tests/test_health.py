@@ -1,5 +1,6 @@
 import sys
 
+from ralleh_voice import __version__
 from ralleh_voice.app import health_payload, readiness_payload
 
 
@@ -7,7 +8,7 @@ def test_health_payload_shape():
     payload = health_payload()
     assert payload["service"] == "ralleh-voice"
     assert payload["status"] == "ok"
-    assert payload["version"] == "0.3.0"
+    assert payload["version"] == __version__
     assert "components" in payload
 
 

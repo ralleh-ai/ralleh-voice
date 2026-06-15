@@ -1,0 +1,20 @@
+# Optional voice extras audit baseline (direct packages only).
+#
+# Purpose:
+# - Keep CI vulnerability visibility for optional extras without forcing full
+#   transitive model-stack installs on every run.
+# - Avoid hard failures on Python runtimes where some extras are not available
+#   (for example kokoro on Python >= 3.13 at time of writing).
+#
+# This file is consumed by:
+#   pip-audit -r requirements/audit/voice-direct-baseline.txt --no-deps
+#
+# Notes:
+# - --no-deps intentionally audits only direct optional packages.
+# - Core runtime dependency auditing remains strict and blocking in CI.
+
+torch>=2.3,<3.0
+silero-vad>=6.0,<7.0
+numpy>=1.26,<3.0
+faster-whisper>=1.0,<2.0
+kokoro>=0.7.16,<1.0; python_version < "3.13"

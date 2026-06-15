@@ -10,6 +10,7 @@ Single API service:
 
 - `GET /v1/healthz` => liveness + selected adapter modes
 - `GET /v1/readyz` => process/config readiness + per-adapter readiness flags
+- optional `GET /v1/metrics` (Prometheus text format) when `RALLEH_VOICE_METRICS_ENABLED=true`
 - In `openclaw-gateway` bridge mode, readiness is true only when bridge URL + agent target + token policy are satisfied.
 - Post-install operator check: `.venv/bin/python3 scripts/smoke_check.py --base-url http://127.0.0.1:8099`
   - validates healthz, readyz, static Control Room, WebSocket hello path, and deterministic turn flow
@@ -18,9 +19,21 @@ Single API service:
   - when validating through public Caddy ingress under `/voice`, use `.venv/bin/python3 scripts/smoke_check.py --base-url https://voice.example.com/voice`
   - use `--hello-only` or `--allow-not-ready` when intentionally validating partial/incomplete real-adapter installs
 
+## CI security checks
+
+- Blocking dependency audit: `pip-audit` on core runtime/dev/redis environment.
+- Advisory dependency audit: `pip-audit -r requirements/audit/voice-direct-baseline.txt --no-deps` for optional voice extras direct-package baseline.
+- Advisory runs upload workflow artifact `pip-audit-voice-direct` (JSON) for vulnerability triage/history.
+- Treat advisory voice findings as action items for triage, but do not block urgent core-path fixes unless the finding affects deployed extras on the target environment.
+- Dependabot is enabled (weekly) for pip and GitHub Actions dependency update PRs.
+
 ## Logging
 
 Current baseline: stdout logs + WebSocket event-level errors.
+
+Production hygiene:
+- Do not log full transcripts, agent replies, auth tokens, or raw audio payloads at INFO level.
+- Use short-lived DEBUG traces only during active diagnosis and rotate logs after incident handling if sensitive text may have appeared.
 
 ## Install and rehearsal lessons (do not repeat these)
 
@@ -76,6 +89,8 @@ Service-management verification now proven in rehearsal:
 - per-turn chunk/byte limit exceeded => `session.error` (`TURN_BUFFER_OVERFLOW`) and turn buffer reset
 - missing/failed auth in protected modes => `session.error` (`AUTH_REQUIRED`, `AUTH_MISSING_TOKEN`, `AUTH_BAD_SIGNATURE`, `AUTH_EXPIRED`, `AUTH_BAD_FORMAT`, `AUTH_INVALID_CLAIM`, `AUTH_CONFIG_ERROR`)
 - rate-limit breach (events/audio bytes) => `session.error` (`RATE_LIMITED`) with structured `meta.kind` (`events_per_window` / `audio_bytes_per_window`)
+- when Redis limiter degrades to memory fallback, ready/session metadata includes `rate_limits.degraded=true` and a reason string for operator visibility
+- optional anonymous limiter identity can include client IP (`RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS=true`) to reduce abuse from rapid reconnect churn
 - end-turn without chunks => `session.error` (`EMPTY_TURN`)
 - adapter failure (missing dep/model/endpoint/auth/network/timeout/contract mismatch) => `session.error` (`ADAPTER_FAILURE`) with structured `meta`
 - unexpected internal exception => `session.error` (`PIPELINE_FAILURE`) with generic detail

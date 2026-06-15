@@ -166,6 +166,20 @@ Useful repo hygiene check:
 git diff --check
 ```
 
+Dependency audit checks:
+
+```bash
+# strict, blocking baseline for runtime + dev + redis footprint
+.venv/bin/pip-audit
+
+# optional voice baseline (direct optional packages only)
+.venv/bin/pip-audit -r requirements/audit/voice-direct-baseline.txt --no-deps
+```
+
+CI treats the first check as blocking and the second as advisory so optional voice stack risk stays visible without destabilizing core verification.
+The advisory voice audit also uploads a JSON artifact (`pip-audit-voice-direct`) for triage history in workflow runs.
+Dependabot is enabled for both `pip` and GitHub Actions updates on a weekly cadence.
+
 ## Post-install smoke check
 
 After a fresh install or service restart, run the smoke checker against the deployed instance:
@@ -363,6 +377,7 @@ The server bootstrap event can expose:
 - optional authenticated client label
 - optional token reference metadata
 - optional signed-token claims metadata
+- rate limiter degraded-mode diagnostics (`degraded`, `detail`) when Redis falls back to memory
 
 ## Auth modes
 
@@ -391,6 +406,10 @@ Verification checks signature, expiry, issued-at time, and optional issuer/audie
 
 See:
 - `docs/ws-signed-token.md`
+
+Token helper CLI:
+- `ralleh-voice-token mint ...`
+- `ralleh-voice-token verify ...`
 
 ## Processing modes
 
@@ -506,6 +525,35 @@ This section is written for operators: each variable includes its purpose, defau
   - Default: `true`
   - Allowed: `true|false`
   - Example: `true`
+
+- `RALLEH_VOICE_SECURITY_HEADERS_ENABLED`
+  - Purpose: enable baseline HTTP hardening headers (`nosniff`, frame deny, referrer policy, permissions policy, no-store).
+  - Default: `true`
+  - Allowed: `true|false`
+  - Example: `true`
+
+- `RALLEH_VOICE_CORS_ALLOW_ORIGINS`
+  - Purpose: comma-separated allowlist for browser Control Room origins.
+  - Default: `http://127.0.0.1,http://localhost`
+  - Example: `https://voice-control.example.com`
+
+- `RALLEH_VOICE_CORS_ALLOW_CREDENTIALS`
+  - Purpose: include credentialed CORS responses when required by your browser integration.
+  - Default: `false`
+  - Allowed: `true|false`
+  - Example: `false`
+  - Notes: when set to `true`, `RALLEH_VOICE_CORS_ALLOW_ORIGINS` must be explicit (cannot include `*`).
+
+- `RALLEH_VOICE_METRICS_ENABLED`
+  - Purpose: enable Prometheus-style metrics endpoint at `/v1/metrics`.
+  - Default: `false`
+  - Allowed: `true|false`
+  - Example: `true`
+
+- `RALLEH_VOICE_BUILD_COMMIT`
+  - Purpose: optional build metadata included in `/v1/healthz` and `/v1/readyz`.
+  - Default: empty
+  - Example: `a1b2c3d4`
 
 ### WebSocket limits and behavior
 
@@ -629,6 +677,12 @@ This section is written for operators: each variable includes its purpose, defau
   - Default: `8388608`
   - Minimum: `1`
   - Example: `8388608`
+
+- `RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS`
+  - Purpose: include client IP in anonymous limiter identity buckets as a secondary anti-abuse signal.
+  - Default: `false`
+  - Allowed: `true|false`
+  - Example: `true`
 
 - `RALLEH_VOICE_WS_RATE_LIMIT_REDIS_URL`
   - Purpose: Redis connection string used when backend is `redis`.

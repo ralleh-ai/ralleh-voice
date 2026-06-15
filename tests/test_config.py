@@ -86,3 +86,19 @@ def test_load_settings_rate_limit_legacy_alias(monkeypatch):
     cfg = load_settings()
     assert cfg.ws_rate_limit_events_per_window == 321
     assert cfg.ws_rate_limit_audio_bytes_per_window == 654
+
+
+def test_load_settings_rejects_wildcard_origin_when_credentials_enabled(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_CORS_ALLOW_ORIGINS", "*")
+    monkeypatch.setenv("RALLEH_VOICE_CORS_ALLOW_CREDENTIALS", "true")
+    with pytest.raises(ValueError):
+        load_settings()
+
+
+def test_load_settings_includes_metrics_and_anon_ip_flags(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_METRICS_ENABLED", "true")
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS", "true")
+
+    cfg = load_settings()
+    assert cfg.metrics_enabled is True
+    assert cfg.ws_rate_limit_include_ip_for_anonymous is True

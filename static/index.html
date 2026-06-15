@@ -1443,7 +1443,12 @@
 
       const head = document.createElement('div');
       head.className = 'head';
-      head.innerHTML = `<span>${kind.toUpperCase()}</span><span>${nowIsoClock()}</span>`;
+      const headKind = document.createElement('span');
+      headKind.textContent = kind.toUpperCase();
+      const headClock = document.createElement('span');
+      headClock.textContent = nowIsoClock();
+      head.appendChild(headKind);
+      head.appendChild(headClock);
 
       const bodyEl = document.createElement('div');
       bodyEl.className = 'body';

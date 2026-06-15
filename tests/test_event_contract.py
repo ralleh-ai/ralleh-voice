@@ -50,3 +50,15 @@ def test_parse_client_event_valid():
 def test_parse_client_event_failures(raw, error_type):
     with pytest.raises(error_type):
         parse_client_event(raw)
+
+
+def test_parse_client_event_rejects_unknown_top_level_field():
+    raw = json.dumps({"type": EVENT_HELLO, "payload": {}, "unexpected": True})
+    with pytest.raises(ValueError):
+        parse_client_event(raw)
+
+
+def test_parse_client_event_rejects_unknown_payload_field():
+    raw = json.dumps({"type": EVENT_AUDIO_IN, "payload": {"pcm_b64": "aA==", "codec": "pcm"}})
+    with pytest.raises(ValueError):
+        parse_client_event(raw)

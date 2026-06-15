@@ -23,6 +23,18 @@ def test_ws_malformed_json_returns_structured_error():
         assert err["payload"]["code"] == "BAD_JSON"
 
 
+def test_ws_rejects_unknown_event_fields_as_bad_event():
+    app = app_module.create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "session.hello", "payload": {"client": "test"}, "unexpected": True})
+        err = ws.receive_json()
+        assert err["type"] == "session.error"
+        assert err["payload"]["code"] == "BAD_EVENT"
+
+
 def test_ws_turn_flow_and_cancel():
     app = app_module.create_app()
     client = TestClient(app)
@@ -452,6 +464,60 @@ def test_ws_streaming_mode_emits_partial_before_final(monkeypatch):
             "audio.output.chunk",
             "session.done",
         ]
+
+
+def test_ws_initial_ready_exposes_degraded_rate_limit_metadata(monkeypatch):
+    class FakeRateLimiter:
+        backend = "memory"
+        detail = "redis unavailable"
+
+        def allow_event(self, _identity, _now):
+            return app_module.RateLimitResult(allowed=True, observed=0, backend="memory", degraded=True, detail=self.detail)
+
+        def allow_audio_bytes(self, _identity, _size, _now):
+            return app_module.RateLimitResult(allowed=True, observed=0, backend="memory", degraded=True, detail=self.detail)
+
+    monkeypatch.setattr(app_module, "build_rate_limiter", lambda _cfg: FakeRateLimiter())
+
+    app = app_module.create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ready = ws.receive_json()
+        assert ready["type"] == "session.ready"
+        limits = ready["payload"]["session"]["rate_limits"]
+        assert limits["degraded"] is True
+        assert limits["detail"] == "redis unavailable"
+
+
+def test_ws_rate_limit_identity_can_include_client_ip_for_anonymous(monkeypatch):
+    monkeypatch.setenv("RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS", "true")
+
+    seen_identities: list[str] = []
+
+    class IdentityCaptureRateLimiter:
+        backend = "memory"
+        detail = ""
+
+        def allow_event(self, identity, _now):
+            seen_identities.append(identity)
+            return app_module.RateLimitResult(allowed=True, observed=1, backend="memory", degraded=False, detail=None)
+
+        def allow_audio_bytes(self, _identity, _size, _now):
+            return app_module.RateLimitResult(allowed=True, observed=1, backend="memory", degraded=False, detail=None)
+
+    monkeypatch.setattr(app_module, "build_rate_limiter", lambda _cfg: IdentityCaptureRateLimiter())
+
+    app = app_module.create_app()
+    client = TestClient(app)
+
+    with client.websocket_connect("/v1/ws/voice") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "session.hello", "payload": {"client": "ip-test"}})
+        ws.receive_json()
+
+    assert seen_identities
+    assert any(identity.startswith("anon:testclient:") for identity in seen_identities)
 
 
 def test_ws_streaming_mode_cancel_still_works(monkeypatch):

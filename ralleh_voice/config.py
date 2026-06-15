@@ -56,6 +56,11 @@ class Settings:
     log_level: str = "info"
     ws_path: str = "/v1/ws/voice"
     static_enabled: bool = True
+    security_headers_enabled: bool = True
+    cors_allow_origins: str = "http://127.0.0.1,http://localhost"
+    cors_allow_credentials: bool = False
+    metrics_enabled: bool = False
+    build_commit: str = ""
     ws_max_event_bytes: int = 262144
     ws_max_audio_chunk_bytes: int = 262144
     ws_max_buffered_chunks: int = 512
@@ -74,6 +79,7 @@ class Settings:
     ws_rate_limit_window_seconds: int = 60
     ws_rate_limit_events_per_window: int = 600
     ws_rate_limit_audio_bytes_per_window: int = 8388608
+    ws_rate_limit_include_ip_for_anonymous: bool = False
     ws_rate_limit_redis_url: str = "redis://127.0.0.1:6379/0"
     ws_rate_limit_redis_key_prefix: str = "ralleh:voice:ratelimit"
     ws_rate_limit_redis_timeout_ms: int = 200
@@ -112,6 +118,12 @@ def _validate_settings(cfg: Settings) -> Settings:
             "RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES must be <= RALLEH_VOICE_WS_MAX_BUFFERED_AUDIO_BYTES"
         )
 
+    allow_origins = [part.strip() for part in cfg.cors_allow_origins.split(",") if part.strip()]
+    if cfg.cors_allow_credentials and "*" in allow_origins:
+        raise ValueError(
+            "RALLEH_VOICE_CORS_ALLOW_CREDENTIALS=true requires explicit origins; '*' is not allowed"
+        )
+
     if cfg.ws_auth_mode == "shared-secret":
         token_env_var = cfg.ws_auth_token_env_var.strip()
         if not token_env_var:
@@ -141,6 +153,13 @@ def load_settings() -> Settings:
         log_level=os.getenv("RALLEH_VOICE_LOG_LEVEL", "info"),
         ws_path=os.getenv("RALLEH_VOICE_WS_PATH", "/v1/ws/voice"),
         static_enabled=_env_bool("RALLEH_VOICE_STATIC_ENABLED", True),
+        security_headers_enabled=_env_bool("RALLEH_VOICE_SECURITY_HEADERS_ENABLED", True),
+        cors_allow_origins=os.getenv(
+            "RALLEH_VOICE_CORS_ALLOW_ORIGINS", "http://127.0.0.1,http://localhost"
+        ),
+        cors_allow_credentials=_env_bool("RALLEH_VOICE_CORS_ALLOW_CREDENTIALS", False),
+        metrics_enabled=_env_bool("RALLEH_VOICE_METRICS_ENABLED", False),
+        build_commit=os.getenv("RALLEH_VOICE_BUILD_COMMIT", "").strip(),
         ws_max_event_bytes=_env_int_min("RALLEH_VOICE_WS_MAX_EVENT_BYTES", 262144, 1),
         ws_max_audio_chunk_bytes=_env_int_min("RALLEH_VOICE_WS_MAX_AUDIO_CHUNK_BYTES", 262144, 1),
         ws_max_buffered_chunks=_env_int_min("RALLEH_VOICE_WS_MAX_BUFFERED_CHUNKS", 512, 1),
@@ -184,6 +203,9 @@ def load_settings() -> Settings:
             ("RALLEH_VOICE_WS_RATE_LIMIT_AUDIO_BYTES_PER_MINUTE",),
             8388608,
             1,
+        ),
+        ws_rate_limit_include_ip_for_anonymous=_env_bool(
+            "RALLEH_VOICE_WS_RATE_LIMIT_INCLUDE_IP_FOR_ANONYMOUS", False
         ),
         ws_rate_limit_redis_url=os.getenv("RALLEH_VOICE_WS_RATE_LIMIT_REDIS_URL", "redis://127.0.0.1:6379/0"),
         ws_rate_limit_redis_key_prefix=os.getenv(
