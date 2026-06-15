@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload optional voice audit artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pip-audit-voice-direct
           path: artifacts/pip-audit-voice-direct.json
